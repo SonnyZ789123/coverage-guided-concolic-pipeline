@@ -17,7 +17,7 @@ readonly PROJECT_PREFIXES="test.testsuites" # Comma-separated list of project pr
 # Fixed config
 readonly JUNIT_CONSOLE_JAR="$HOME_DIR/.m2/repository/org/junit/platform/junit-platform-console-standalone/1.12.2/junit-platform-console-standalone-1.12.2.jar"
 
-readonly AGENT_JAR="$HOME_DIR/dev/master-thesis/coverage-agent/target/coverage-agent-1.0.jar"
+readonly AGENT_JAR="$HOME_DIR/dev/master-thesis/coverage-agent/target/coverage-agent-1.0.0.jar"
 
 readonly COVERAGE_PATHS_OUTPUT_PATH="$HOME_DIR/dev/master-thesis/data/coverage_paths.json"
 readonly BLOCK_MAP_PATH="$HOME_DIR/dev/master-thesis/pathcov/out/icfg_block_map.json"
