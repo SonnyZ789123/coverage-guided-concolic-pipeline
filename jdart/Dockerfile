@@ -78,7 +78,7 @@ WORKDIR ${JDART_DIR}/jconstraints-z3
 RUN mvn install
 
 ###############################################################################
-# Configure JPF (NOW FIXED: jdart included in extensions)
+# Configure JPF
 ###############################################################################
 RUN mkdir -p /root/.jpf && \
     echo "jpf-core = ${JDART_DIR}/jpf-core"     >> /root/.jpf/site.properties && \
@@ -97,7 +97,7 @@ RUN mkdir -p /root/.jconstraints/extensions && \
 # Install JDart
 ###############################################################################
 WORKDIR ${JDART_DIR}
-RUN git clone https://github.com/SonnyZ789123/jdart.git
+RUN git clone --branch v1.0.0 https://github.com/SonnyZ789123/jdart.git
 WORKDIR ${JDART_DIR}/jdart
 RUN ant
 
