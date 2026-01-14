@@ -21,6 +21,7 @@ project_prefixes = ",".join(sut_cfg["analysis"]["project_prefixes"])
 
 compiled_root = sut_cfg["sut"]["compiled_root"]
 test_root = sut_cfg["sut"]["test_root"]
+jdart_tests_dir_out = sut_cfg["test_generation"]["generated_tests_dir_out"]
 
 # -------------------------------
 # Generate Pathcov config
@@ -59,6 +60,9 @@ target={cls}
 
 concolic.method.{method}={jdart_method}
 concolic.method={method}
+
+# Generated tests output
+jdart.tests.dir=/sut/{jdart_tests_dir_out}
 """
 
 jdart_out = ROOT / "jdart/configs/sut_gen.jpf"
