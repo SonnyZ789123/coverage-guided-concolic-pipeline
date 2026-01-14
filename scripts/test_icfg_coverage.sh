@@ -15,7 +15,7 @@ readonly FULLY_QUALIFIED_METHOD_SIGNATURE="<test.testsuites.Test: int bar(int)>"
 readonly PROJECT_PREFIXES="test.testsuites" # Comma-separated list of project prefixes
 
 # Tools inside image
-readonly PATHCOV_PROJECT_DIR="${PATHCOV_DIR:?PATHCOV_DIR is not set}"  # This variable is injected at container runtime via ENV
+readonly PATHCOV_PROJECT_DIR="${PATHCOV_PROJECT_DIR:?PATHCOV_PROJECT_DIR is not set}"  # This variable is injected at container runtime via ENV
 readonly PATHCOV_DIR="$PATHCOV_PROJECT_DIR/pathcov"
 
 readonly AGENT_JAR="${COVERAGE_AGENT_JAR:?COVERAGE_AGENT_JAR is not set}"  # This variable is injected at container runtime via ENV
