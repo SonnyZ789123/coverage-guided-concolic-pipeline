@@ -12,7 +12,7 @@ JDART_SERVICE="jdart"
 # Scripts / configs inside containers
 PATHCOV_SCRIPT="/scripts/test_icfg_coverage.sh"
 SUT_CONFIG="/configs/sut.config"
-JDART_JPF_CONFIG="/configs/jdart/sut.jpf"
+JDART_JPF_CONFIG="/configs/sut.jpf"
 
 # Optional arguments
 DATA_DIR="/data"
