@@ -92,27 +92,27 @@ generate_jdart_instruction_coverage() {
   popd > /dev/null
 }
 
-generate_coverage_graph() {
-  log "⚙️ Generating coverage graph"
+# generate_coverage_graph() {
+#   log "⚙️ Generating coverage graph"
 
-  pushd "$PATHCOV_DIR" > /dev/null
+#   pushd "$PATHCOV_DIR" > /dev/null
 
-  mvn exec:java \
-    -Dexec.mainClass="com.kuleuven.icfg.coverage.GenerateCoverageGraph" \
-    -Dexec.args="$CLASS_PATH \"$FULLY_QUALIFIED_METHOD_SIGNATURE\" $COVERAGE_PATHS_OUTPUT_PATH $BLOCK_MAP_PATH"
+#   mvn exec:java \
+#     -Dexec.mainClass="com.kuleuven.icfg.coverage.GenerateCoverageGraph" \
+#     -Dexec.args="$CLASS_PATH \"$FULLY_QUALIFIED_METHOD_SIGNATURE\" $COVERAGE_PATHS_OUTPUT_PATH $BLOCK_MAP_PATH"
 
-  popd > /dev/null
-}
+#   popd > /dev/null
+# }
 
-generate_svg() {
-  log "⚙️ Generating SVG visualization"
+# generate_svg() {
+#   log "⚙️ Generating SVG visualization"
 
-  dot -Tsvg \
-    "$VISUALIZATION_DIR/$DOT_FILE_NAME" \
-    -o "$VISUALIZATION_DIR/$SVG_FILE_NAME"
+#   dot -Tsvg \
+#     "$VISUALIZATION_DIR/$DOT_FILE_NAME" \
+#     -o "$VISUALIZATION_DIR/$SVG_FILE_NAME"
 
-  open "$VISUALIZATION_DIR/$SVG_FILE_NAME"
-}
+#   open "$VISUALIZATION_DIR/$SVG_FILE_NAME"
+# }
 
 # ============================================================
 # MAIN
