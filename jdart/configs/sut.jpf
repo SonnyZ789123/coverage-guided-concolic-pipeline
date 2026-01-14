@@ -9,6 +9,5 @@ log.finest=jdart,jdart.testsuites
 jdart.exploration=gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy(/configs/coverage_heuristic.config)
 
 jdart.tests.gen=true
-jdart.tests.dir=/sut/data/generated-tests
 
 

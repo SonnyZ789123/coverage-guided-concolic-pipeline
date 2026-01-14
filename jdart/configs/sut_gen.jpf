@@ -1,6 +1,7 @@
+# ============================================================
 # AUTO-GENERATED — DO NOT EDIT
-
-# Compiled classes (inside container)
+# ============================================================
+# Compiled classes
 classpath=/sut/out/production/jdart-examples
 
 # Class under analysis
@@ -8,3 +9,6 @@ target=test.testsuites.Test
 
 concolic.method.bar=test.testsuites.Test.bar(a:int)
 concolic.method=bar
+
+# Generated tests output
+jdart.tests.dir=/sut/data/generated-tests
