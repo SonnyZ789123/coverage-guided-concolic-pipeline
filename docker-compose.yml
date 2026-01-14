@@ -5,6 +5,7 @@ services:
     volumes:
       - pipeline-data:/data
       - ./configs:/configs:ro
+      - ./scripts:/scripts:ro
     working_dir: /pathcov-project
     stdin_open: true
     tty: true
@@ -16,6 +17,7 @@ services:
     volumes:
       - pipeline-data:/data
       - ./configs:/configs:ro
+      - ./scripts:/scripts:ro
     working_dir: /jdart-project
     stdin_open: true
     tty: true
