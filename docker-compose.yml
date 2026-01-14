@@ -4,7 +4,7 @@ services:
     container_name: pathcov
     volumes:
       - pipeline-data:/data
-      - ./configs:/configs:ro
+      - ./pathcov/configs:/configs:ro
       - ./pathcov/scripts:/scripts:ro
       - ${SUT_DIR}:/sut
     working_dir: /pathcov-project
@@ -17,7 +17,7 @@ services:
     container_name: jdart
     volumes:
       - pipeline-data:/data
-      - ./configs:/configs:ro
+      - ./jdart/configs:/configs:ro
       - ${SUT_DIR}:/sut
     working_dir: /jdart-project
     stdin_open: true
