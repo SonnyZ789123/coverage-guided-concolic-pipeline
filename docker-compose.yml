@@ -1,0 +1,24 @@
+services:
+  pathcov:
+    image: pathcov-image:1.0.0
+    container_name: pathcov
+    volumes:
+      - pipeline-data:/data
+      - ./configs:/configs:ro
+    working_dir: /pathcov-project
+    stdin_open: true
+    tty: true
+
+  jdart:
+    image: jdart-image:1.0.0
+    platform: linux/amd64
+    container_name: jdart
+    volumes:
+      - pipeline-data:/data
+      - ./configs:/configs:ro
+    working_dir: /jdart-project
+    stdin_open: true
+    tty: true
+
+volumes:
+  pipeline-data:
