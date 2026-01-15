@@ -1,0 +1,13 @@
+services:
+  pathcov:
+    environment:
+      - ENV=dev
+
+    volumes:
+      - ./development/data:/data
+      - ../pathcov:/pathcov-project/pathcov
+      - ../coverage-agent:/pathcov-project/coverage-agent
+
+  jdart:
+    volumes:
+      - ../../jdart/:/jdart-project/jdart

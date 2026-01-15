@@ -1,6 +1,8 @@
 services:
   pathcov:
     image: pathcov-image:1.0.0
+    environment:
+      - ENV=prod
     container_name: pathcov
     volumes:
       - pipeline-data:/data
@@ -14,6 +16,8 @@ services:
   jdart:
     image: jdart-image:1.0.0
     platform: linux/amd64
+    environment:
+      - ENV=prod
     container_name: jdart
     volumes:
       - pipeline-data:/data
