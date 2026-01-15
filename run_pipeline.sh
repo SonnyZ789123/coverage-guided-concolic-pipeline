@@ -54,6 +54,7 @@ main() {
   if [[ "$ENVIRONMENT" == "prod" ]]; then
     docker compose -f docker-compose.yml up -d
   else
+    mkdir -p ./development/data
     docker compose up -d
   fi
 
