@@ -32,9 +32,9 @@ RUN mvn -B clean install -DskipTests
 # Install pathcov
 ###############################################################################
 WORKDIR ${PATHCOV_PROJECT_DIR}
-RUN git clone --branch v1.0.0 https://github.com/SonnyZ789123/pathcov.git
+RUN git clone --branch v1.1.0 https://github.com/SonnyZ789123/pathcov.git
 WORKDIR ${PATHCOV_PROJECT_DIR}/pathcov
-RUN git checkout v1.0.0
+RUN git checkout v1.1.0
 RUN mvn -B clean install -DskipTests
 
 ###############################################################################
@@ -60,7 +60,7 @@ RUN mkdir -p /opt/junit && \
 ###############################################################################
 # Convenience env vars (VERY useful in scripts)
 ###############################################################################
-ENV PATHCOV_JAR=${PATHCOV_PROJECT_DIR}/pathcov/target/pathcov-1.0.0.jar
+ENV PATHCOV_JAR=${PATHCOV_PROJECT_DIR}/pathcov/target/pathcov-1.1.0.jar
 ENV COVERAGE_AGENT_JAR=${PATHCOV_PROJECT_DIR}/coverage-agent/target/coverage-agent-1.0.0.jar
 
 ###############################################################################
