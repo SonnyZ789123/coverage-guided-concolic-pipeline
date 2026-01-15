@@ -10,4 +10,5 @@ services:
 
   jdart:
     volumes:
+      - ./development/data:/data
       - ../../jdart/:/jdart-project/jdart
