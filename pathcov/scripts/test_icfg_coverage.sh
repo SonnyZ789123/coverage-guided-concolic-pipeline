@@ -68,7 +68,6 @@ generate_block_map() {
 
   pushd "$PATHCOV_DIR" > /dev/null
 
-  mvn -q -DskipTests=true package
   mvn exec:java \
     -Dexec.mainClass="com.kuleuven.icfg.GenerateBlockMap" \
     -Dexec.args="$CLASS_PATH \"$FULLY_QUALIFIED_METHOD_SIGNATURE\" $BLOCK_MAP_PATH $PROJECT_PREFIXES"
