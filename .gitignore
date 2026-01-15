@@ -1,3 +1,9 @@
 .DS_Store
-development/data
 .env
+
+# Generated data directory for development environment
+development/data
+
+# Ignore generated config files
+jdart/configs/sut_gen.jpf
+pathcov/configs/sut.config
