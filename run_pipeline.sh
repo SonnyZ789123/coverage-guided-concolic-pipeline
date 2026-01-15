@@ -2,8 +2,22 @@
 set -Eeuo pipefail
 
 # ============================================================
+# Load .env if present (for shell scripts)
+# ============================================================
+
+if [[ -f .env ]]; then
+  # Export all variables from .env
+  set -a
+  source .env
+  set +a
+fi
+
+
+# ============================================================
 # CONFIG
 # ============================================================
+
+ENVIRONMENT="${ENV:-prod}"
 
 # Docker Compose services
 PATHCOV_SERVICE="pathcov"
@@ -30,11 +44,18 @@ log() {
 # ============================================================
 
 main() {
+  log "⚙️ Setting up environment for '$ENVIRONMENT'"
+
   log "⚙️ Generating tool-specific configs from sut.yml"
   python3 scripts/generate_sut_configs.py
 
   log "⚙️ Starting containers"
-  docker compose up -d
+
+  if [[ "$ENVIRONMENT" == "prod" ]]; then
+    docker compose -f docker-compose.yml up -d
+  else
+    docker compose up -d
+  fi
 
   log "⚙️ Running pathcov stage"
   docker compose exec "$PATHCOV_SERVICE" "$PATHCOV_SCRIPT" "$SUT_CONFIG" "$DATA_DIR"

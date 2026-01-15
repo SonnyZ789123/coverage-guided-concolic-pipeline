@@ -33,8 +33,10 @@ All stages are fully containerized and orchestrated via Docker Compose.
 ```
 .
 ├── configs
-│   └── sut.yml                  # Canonical SUT specification (single source of truth)
+│   └── sut.yml                   # Canonical SUT specification (single source of truth)
 ├── docker-compose.yml            # Orchestrates Pathcov and JDart containers
+├── development
+│   └── data                      # Developmnet: bind-mount for output 
 ├── jdart
 │   ├── Dockerfile
 │   └── configs
