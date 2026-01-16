@@ -41,9 +41,9 @@ RUN mvn -B clean install -DskipTests
 # Install coverage-agent
 ###############################################################################
 WORKDIR ${PATHCOV_PROJECT_DIR}
-RUN git clone --branch v1.0.0 https://github.com/SonnyZ789123/coverage-agent.git
+RUN git clone --branch v1.0.1 https://github.com/SonnyZ789123/coverage-agent.git
 WORKDIR ${PATHCOV_PROJECT_DIR}/coverage-agent
-RUN git checkout v1.0.0
+RUN git checkout v1.0.1
 RUN mvn -B clean install -DskipTests
 
 ###############################################################################
