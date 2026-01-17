@@ -61,7 +61,7 @@ RUN mkdir -p /opt/junit && \
 # Convenience env vars (VERY useful in scripts)
 ###############################################################################
 ENV PATHCOV_JAR=${PATHCOV_PROJECT_DIR}/pathcov/target/pathcov-1.1.0.jar
-ENV COVERAGE_AGENT_JAR=${PATHCOV_PROJECT_DIR}/coverage-agent/target/coverage-agent-1.0.0.jar
+ENV COVERAGE_AGENT_JAR=${PATHCOV_PROJECT_DIR}/coverage-agent/target/coverage-agent-1.0.1.jar
 
 ###############################################################################
 # Default
