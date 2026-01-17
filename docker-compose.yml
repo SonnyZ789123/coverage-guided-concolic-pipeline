@@ -1,6 +1,6 @@
 services:
   pathcov:
-    image: pathcov-image:1.0.0
+    image: sonnyz789123/pathcov-image:1.1.0
     environment:
       - ENV=prod
     container_name: pathcov
@@ -14,7 +14,7 @@ services:
     tty: true
 
   jdart:
-    image: jdart-image:1.0.1
+    image: sonnyz789123/jdart-image:1.0.2
     platform: linux/amd64
     environment:
       - ENV=prod
