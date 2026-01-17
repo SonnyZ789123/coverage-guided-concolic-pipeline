@@ -3,9 +3,7 @@
 An end-to-end, containerized pipeline for **coverage-guided concolic test generation** in Java.
 This project integrates **static CFG/ICFG analysis**, **runtime coverage instrumentation**, **coverage graph construction**, and **heuristic-guided concolic execution with JDart** to systematically discover uncovered execution paths.
 
-The pipeline is designed to be **reproducible**, **configurable**, and **tool-agnostic**, with a single canonical SUT specification that drives all analysis stages.
-
----
+The pipeline is designed to be **reproducible**, **configurable**, and **tool-agnostic**, with a single SUT specification.
 
 ## Overview
 
@@ -26,14 +24,13 @@ The pipeline consists of two main stages:
 
 All stages are fully containerized and orchestrated via Docker Compose.
 
----
 
 ## Repository Structure
 
 ```
 .
 ├── configs
-│   └── sut.yml                   # Canonical SUT specification (single source of truth)
+│   └── sut.yml                   # Canonical SUT specification
 ├── docker-compose.yml            # Orchestrates Pathcov and JDart containers
 ├── development
 │   └── data                      # Developmnet: bind-mount for output 
@@ -55,8 +52,6 @@ All stages are fully containerized and orchestrated via Docker Compose.
 └── requirements.txt              # Host-side Python dependencies
 ```
 
----
-
 ## Requirements (Host)
 
 * Docker
@@ -69,8 +64,6 @@ Install the Python dependency once:
 ```bash
 python3 -m pip install -r requirements.txt
 ```
-
----
 
 ## Step 1: Configure the SUT directory (`.env`)
 
@@ -97,8 +90,6 @@ Example inside the container:
 > **Note**
 > `.env` is automatically read by Docker Compose.
 > It is also explicitly loaded by `run_pipeline.sh` so that host-side scripts see the same variables.
-
----
 
 ## Step 2: Define the SUT and target method (`configs/sut.yml`)
 
@@ -135,8 +126,6 @@ You only edit **this file** to change the SUT or the analyzed method.
 
 All tool-specific configurations are **derived automatically** from this file.
 
----
-
 ## Step 3: (Optional) Configure JDart behavior
 
 You may customize JDart-specific options in:
@@ -164,7 +153,7 @@ jdart.tests.gen=true
 Select a custom exploration strategy:
 
 ```properties
-# Coverage guided
+# Coverage guided (this is the default and will use coverage information of the pathcov step)
 jdart.exploration=gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy(/configs/coverage_heuristic.config)
 
 # Depth First
@@ -176,7 +165,55 @@ jdart.exploration=gov.nasa.jpf.jdart.exploration.BFSStrategy
 
 During execution, this file is **combined** with the auto-generated JDart configuration (`sut_gen.jpf`).
 
----
+Full `sut.jpf` configuration example:
+```
+# enable test genration
+jdart.tests.gen=true
+
+# set the configId for other settings (jdart.configs.<configId>.<setting>)
+concolic.method.foo.config=foo
+
+# add constraints to the input parameters d1 and d2
+jdart.configs.foo.constraints=(d1 > 0.0 && d2 > 0.0)
+
+# max node depth in the execution tree
+jdart.configs.foo.max_depth=100
+
+# max nested calls
+jdart.configs.foo.max_nesting_depth=5
+
+# max times the solver tries to find a valuation to reach a certain node
+jdart.configs.foo.max_alt_depth=1
+
+# switch to a DFS exploration strategy
+jdart.exploration=gov.nasa.jpf.jdart.exploration.DFSStrategy
+
+# Stop the concolic execution after 5 seconds
+jdart.termination=gov.nasa.jpf.jdart.termination.TimedTermination,0,0,5
+
+# Stop the constraint solver (invoked to find a new path) after 1 second
+z3.timeout=1000
+
+# The classname of the generated test file, ideally ending with "Test" (JUnit5)
+jdart.tests.suitename=CustomSuiteNameTest
+
+# The out dir for the generated test suite (default set to data/generated-tests of your sut dir)
+# Note that JDart runs in a container where the sut is bind-mounted to /sut
+jdart.tests.dir=/sut/other-data-dir/tests
+
+# The package name of the test suite (default set to the package of the method under test) 
+jdart.tests.pkg=com.other.package
+
+# Enable/disable logging
+# log_level can be set to info, warning, fine, finer, finest, severe
+# default is 
+#		log.finest=jdart,jdart.testsuites
+#   log.info=constraints
+log.<log_level>=jdart,jdart.debug,jdart.testsuites
+
+# Manually add classpaths of external libraries
+classpath+=:/sut/data/libraries/jdart-examples-library-dep-1.0-SNAPSHOT.jar
+```
 
 ## Step 4: Run the pipeline
 
@@ -195,8 +232,6 @@ This single command will:
 
 No manual Docker commands are required.
 
----
-
 ## Generated Artifacts
 
 All generated data is written to a shared Docker volume mounted at:
@@ -213,8 +248,6 @@ This includes:
 * generated test cases (if enabled)
 
 The volume persists across container runs.
-
----
 
 ## Development Mode (Optional)
 
@@ -237,61 +270,36 @@ services:
       JUNIT_CONSOLE_JAR=/work/pathcov/tools/junit-platform-console-standalone.jar
 ```
 
-Key points:
+In your `.env` file, set `ENV=dev` and run the pipeline.
 
 * `docker-compose.override.yml` is **automatically applied** by Docker Compose
 * Production images remain unchanged
 * You can override:
-
   * tool source directories
   * JAR locations
   * other environment variables as needed
 
 No script changes are required.
 
----
-
 ## Docker Architecture
 
 ### Docker Compose
 
 * **pathcov container**
-
   * Runs coverage instrumentation and graph generation
   * Mounts:
-
     * `/sut` (SUT)
     * `/configs` (Pathcov configs)
     * `/data` (shared artifacts)
 * **jdart container**
-
   * Runs JDart/JPF
   * Mounts:
-
     * `/sut` (SUT)
     * `/configs` (JDart configs)
     * `/data` (shared artifacts)
 
 Containers do **not** communicate directly.
 The host orchestrates execution via `run_pipeline.sh`.
-
----
-
-## Design Principles
-
-* **Single source of truth**
-  All tool-specific configs are generated from `sut.yml`
-
-* **No configuration drift**
-  Pathcov and JDart always analyze the same method
-
-* **Containerized execution**
-  No local Java/JPF/JDart installation required
-
-* **Reproducible experiments**
-  Identical inputs lead to identical results
-
----
 
 ## Typical Workflow
 
@@ -303,7 +311,7 @@ python3 -m pip install -r requirements.txt
 
 cat <<EOF > .env
 ENV=dev
-SUT_DIR=$HOME/dev/jdart-examples
+SUT_DIR=$HOME/dev/your-sut-directory
 EOF
 
 vim configs/sut.yml
@@ -313,15 +321,78 @@ vim jdart/configs/sut.jpf   # optional
 
 ```
 
----
+## About JDart execution 
 
-## Notes for Research / Artifact Evaluation
+### What JDart Is For
 
-* The pipeline cleanly separates **experiment specification** from **tool configuration**
-* All analysis stages are deterministic given the same inputs
-* The architecture is intentionally modular to support future extensions
+JDart performs **concolic execution** of Java methods to explore **full execution paths** and generate JUnit tests. It is intended for **small, bounded, single-threaded methods** driven by **primitive inputs**.
 
----
+### Symbolic vs Concrete
+
+**Symbolic**
+
+- Only **primitive data types** can become symbolic
+- `int`, `long`, `short`, `byte`, `char`, `boolean`, `float`, `double`
+- This includes primitive fields of objects
+- The elements of a primitive data type array `PrimitiveType[]` can become symbolic, but the array itself stays concrete
+
+**Always Concrete**
+
+- Non-primitive data types
+- `String`, user defined classes, arrays
+
+Only symbolic parameters can induce to-be-explored branches.
+
+### What is explored
+
+- Control flow: `if–else`, nested conditionals, `switch`, short-circuit logic
+- Interprocedural calls with symbolic propagation
+- `throw`, runtime exceptions, `try–catch`
+- Division by zero is explicitly branched
+- JDart supports multiple exploration strategies, and constraint solver is interchangeable (default is z3)
+
+### Unsupported (yet) / Limited Features
+
+- **Recursion is unsupported**
+- **Concurrency is unsupported** (single-threaded only)
+- **Usage of external libraries are unsupported during test suite generation**
+- Unbounded or unchecked loops can cause infinite loop expansion
+- Loops with symbols can cause path explosion
+- Multi-dimensional arrays, arrays of objects stay concrete
+
+### Loops
+
+- Loops are **bytecode-level unrolled**
+- Symbolic loop conditions → path explosion
+- Unbounded loops can be controlled via config defined constraints
+
+### Test Generation
+
+Generated tests:
+- Cover **only full paths**
+- Assert **only return values**
+- Do **not** check side effects, invariants, or post-conditions
+- Paths marked `DONT_KNOW` or `IGNORE` are skipped
+- The exploration strategy `CoverageHeuristicStrategy` marks already covered paths with `IGNORE`, which essentially makes the test suite generator create test cases only for uncovered paths
+
+### Determinism
+
+- Execution is deterministic under JPF
+- Time, randomness, and object identity are fixed, even for external libraries
+- True non-determinism only via uninstrumented external calls (networked calls for example)
+
+### Summary
+
+**JDart works best for**
+
+- Small, primitive-centric methods
+- Bounded exploration
+- Academic and controlled benchmarks
+
+**JDart is not suited for**
+
+- Recursive or concurrent code
+- Heap-heavy or library-intensive applications
 
 ## License
 
