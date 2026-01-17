@@ -10,13 +10,21 @@ test_generation:
   generated_tests_dir_out: data/generated-tests
 
 target:
-  class: test.testsuites.Test
-  method: bar
+  class: examples.OverallJDartExample
+  method: foo
   return: int
   parameters:
-    - name: a
+    - name: n
       type: int
+    - name: m
+      type: int
+    - name: limit
+      type: long
+    - name: scale
+      type: double
+    - name: flag
+      type: boolean
 
 analysis:
   project_prefixes:
-    - test.testsuites
+    - examples
