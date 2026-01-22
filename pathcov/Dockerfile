@@ -37,14 +37,18 @@ WORKDIR ${PATHCOV_PROJECT_DIR}/pathcov
 RUN git checkout v1.1.0
 RUN mvn -B clean install -DskipTests
 
+ENV PATHCOV_JAR=${PATHCOV_PROJECT_DIR}/pathcov/target/pathcov-1.1.0.jar
+
 ###############################################################################
-# Install coverage-agent
+# Install IntelliJ Coverage Agent
 ###############################################################################
-WORKDIR ${PATHCOV_PROJECT_DIR}
-RUN git clone --branch v1.0.2 https://github.com/SonnyZ789123/coverage-agent.git
-WORKDIR ${PATHCOV_PROJECT_DIR}/coverage-agent
-RUN git checkout v1.0.2
-RUN mvn -B clean install -DskipTests
+ENV INTELLIJ_COVERAGE_VERSION=1.0.771
+ENV INTELLIJ_COVERAGE_AGENT_JAR=/opt/intellij-coverage/intellij-coverage-agent-${INTELLIJ_COVERAGE_VERSION}.jar
+
+RUN mkdir -p /opt/intellij-coverage && \
+    curl -fsSL \
+      https://repo1.maven.org/maven2/org/jetbrains/intellij/deps/intellij-coverage-agent/${INTELLIJ_COVERAGE_VERSION}/intellij-coverage-agent-${INTELLIJ_COVERAGE_VERSION}.jar \
+      -o ${INTELLIJ_COVERAGE_AGENT_JAR}
 
 ###############################################################################
 # Install JUnit Platform Console Standalone
@@ -56,12 +60,6 @@ RUN mkdir -p /opt/junit && \
     curl -fsSL \
       https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/${JUNIT_VERSION}/junit-platform-console-standalone-${JUNIT_VERSION}.jar \
       -o ${JUNIT_CONSOLE_JAR}
-
-###############################################################################
-# Convenience env vars (VERY useful in scripts)
-###############################################################################
-ENV PATHCOV_JAR=${PATHCOV_PROJECT_DIR}/pathcov/target/pathcov-1.1.0.jar
-ENV COVERAGE_AGENT_JAR=${PATHCOV_PROJECT_DIR}/coverage-agent/target/coverage-agent-1.0.2.jar
 
 ###############################################################################
 # Default
