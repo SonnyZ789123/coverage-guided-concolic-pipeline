@@ -25,6 +25,7 @@ source "$SUT_CONFIG_FILE"
 
 : "${CLASS_PATH:?CLASS_PATH not set}"
 : "${TEST_CLASS_PATH:?TEST_CLASS_PATH not set}"
+: "${SOURCE_PATH:?SOURCE_PATH not set}"
 : "${TARGET_CLASS:?TARGET_CLASS not set}"
 : "${FULLY_QUALIFIED_METHOD_SIGNATURE:?FULLY_QUALIFIED_METHOD_SIGNATURE not set}"
 
@@ -45,13 +46,14 @@ readonly AGENT_JAR="${INTELLIJ_COVERAGE_AGENT_JAR:?INTELLIJ_COVERAGE_AGENT_JAR i
 
 readonly JUNIT_CONSOLE_JAR="${JUNIT_CONSOLE_JAR:?JUNIT_CONSOLE_JAR is not set}"  # This variable is injected at container runtime via ENV
 
+# Outputs
+readonly BLOCK_MAP_PATH="$DATA_DIR/blockmaps/icfg_block_map.json"
+
 readonly INTELLIJ_COVERAGE_AGENT_CONFIG_PATH="$DATA_DIR/intellij-coverage/intellij_coverage_agent.args"
 readonly INTELLIJ_COVERAGE_REPORT_PATH="$DATA_DIR/intellij-coverage/intellij-coverage-report.ic"
 
-# Outputs
-readonly BLOCK_MAP_PATH="$DATA_DIR/blockmaps/icfg_block_map.json"
-readonly COVERAGE_PATHS_OUTPUT_PATH="$DATA_DIR/coverage/coverage_paths.json"
-readonly JDART_INSTRUCTION_PATHS_OUTPUT_PATH="$DATA_DIR/coverage/jdart_instruction_paths.json"
+readonly EXPORTER_CONFIG_PATH="$DATA_DIR/intellij-coverage/intellij_coverage_exporter_config.json"
+readonly COVERAGE_EXPORT_OUTPUT_PATH="$DATA_DIR/coverage/line_coverage_export.json"
 
 readonly VISUALIZATION_DIR="$DATA_DIR/visualization/icfg/coverage"
 
@@ -113,14 +115,23 @@ run_junit_with_agent() {
   log "✅ Running JUnit tests completed"
 }
 
-generate_jdart_instruction_coverage() {
-  log "⚙️ Generating JDart instruction coverage"
+generate_line_coverage_json_export() {
+  log "⚙️ Generating line coverage JSON export"
 
   pushd "$PATHCOV_DIR" > /dev/null
 
+  "$SCRIPTS_DIR/make_intellij_coverage_exporter_config.sh" \
+    "$INTELLIJ_COVERAGE_REPORT_PATH" \
+    "$CLASS_PATH" \
+    "$SOURCE_PATH" \
+    "$TARGET_CLASS" \
+    "$COVERAGE_EXPORT_OUTPUT_PATH" \
+    "$EXPORTER_CONFIG_PATH"
+
+
   mvn exec:java \
-    -Dexec.mainClass="com.kuleuven.jdart.GenerateJDartInstructionCoverage" \
-    -Dexec.args="$COVERAGE_PATHS_OUTPUT_PATH $JDART_INSTRUCTION_PATHS_OUTPUT_PATH"
+    -Dexec.mainClass="com.kuleuven.coverage.intellij.export.CoverageExportMain" \
+    -Dexec.args="$EXPORTER_CONFIG_PATH"
 
   popd > /dev/null
 }
@@ -151,7 +162,7 @@ generate_svg() {
 main() {
   generate_block_map
   run_junit_with_agent
-  generate_jdart_instruction_coverage
+  generate_line_coverage_json_export
   generate_coverage_graph
   generate_svg
   log "✅ Pipeline completed successfully"
