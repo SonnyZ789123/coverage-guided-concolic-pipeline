@@ -3,6 +3,10 @@ services:
     image: sonnyz789123/pathcov-image:1.1.0
     environment:
       - ENV=prod
+      - DATA_DIR=/data
+      - CONFIGS_DIR=/configs
+      - SCRIPTS_DIR=/scripts
+      - SUT_DIR=/sut
     container_name: pathcov
     volumes:
       - pipeline-data:/data
@@ -18,6 +22,10 @@ services:
     platform: linux/amd64
     environment:
       - ENV=prod
+      - DATA_DIR=/data
+      - CONFIGS_DIR=/configs
+      - SCRIPTS_DIR=/scripts
+      - SUT_DIR=/sut
     container_name: jdart
     volumes:
       - pipeline-data:/data
