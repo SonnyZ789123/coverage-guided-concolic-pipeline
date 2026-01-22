@@ -5,6 +5,7 @@
 sut:
   compiled_root: out/production/jdart-examples
   test_root: out/test/jdart-examples
+  source_root: src/examples
   
 test_generation:
   generated_tests_dir_out: data/generated-tests
