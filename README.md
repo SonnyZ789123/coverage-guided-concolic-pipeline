@@ -45,7 +45,7 @@ All stages are fully containerized and orchestrated via Docker Compose.
 │   ├── configs
 │   │   └── sut.config            # AUTO-GENERATED from sut.yml
 │   └── scripts
-│       └── generate_pathcov.sh
+│       └── run_pathcov_pipeline.sh
 ├── scripts
 │   └── generate_sut_configs.py   # Generates tool-specific configs from sut.yml
 ├── run_pipeline.sh               # Single entry point for running the pipeline
@@ -347,7 +347,7 @@ services:
       - ./development/data:/data
 ```
 
-After running the pipeline, which runs `scripts/generate_pathcov.sh` in the pathcov-container, a `coverage_graph.svg` file is created in the specified /data folder with path `/data/visualization/icfg/coverage/coverage_graph.svg`.
+After running the pipeline, which runs `scripts/run_pathcov_pipeline.sh` in the pathcov-container, a `coverage_graph.svg` file is created in the specified /data folder with path `/data/visualization/icfg/coverage/coverage_graph.svg`.
 
 Then just execute `open data/visualization/icfg/coverage/coverage_graph.svg`. 
 
@@ -359,10 +359,10 @@ After running the pipeline with `jdart.tests.gen=true`, copy-paste the test file
 docker exec -it pathcov bash
 ```
 
-And execute the `generate_pathcov.sh` script again by executing: 
+And execute the `run_pathcov_pipeline.sh` script again by executing: 
 
 ```bash
-/scripts/generate_pathcov.sh
+/scripts/run_pathcov_pipeline.sh
 ```
 
 Then open the `coverage_graph.svg` again as explained above. 
