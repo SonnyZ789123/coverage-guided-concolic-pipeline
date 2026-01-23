@@ -24,7 +24,7 @@ PATHCOV_SERVICE="pathcov"
 JDART_SERVICE="jdart"
 
 # Scripts / configs inside containers
-PATHCOV_SCRIPT="/scripts/generate_pathcov.sh"
+PATHCOV_SCRIPT="/scripts/run_pathcov_pipeline.sh"
 SUT_CONFIG="/configs/sut.config"
 JDART_JPF_CONFIG="/configs/sut.jpf"
 
