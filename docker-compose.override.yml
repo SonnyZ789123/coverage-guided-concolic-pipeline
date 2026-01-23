@@ -6,7 +6,6 @@ services:
     volumes:
       - ./development/data:/data
       - ../pathcov:/pathcov-project/pathcov
-      - ../coverage-agent:/pathcov-project/coverage-agent
 
   jdart:
     volumes:
