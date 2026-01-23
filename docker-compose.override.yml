@@ -8,6 +8,9 @@ services:
       - ../pathcov:/pathcov-project/pathcov
 
   jdart:
+    environment:
+      - ENV=dev
+
     volumes:
       - ./development/data:/data
       - ../../jdart/:/jdart-project/jdart

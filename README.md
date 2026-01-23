@@ -10,17 +10,15 @@ The pipeline is designed to be **reproducible**, **configurable**, and **tool-ag
 The pipeline consists of two main stages:
 
 1. **Pathcov stage**
-
    * Generates block maps (CFG/ICFG)
-   * Runs the existing test suite with a custom Java coverage agent
-   * Extracts covered instruction paths
+   * Runs the existing test suite with a custom the IntelliJ Coverage Agent
+   * Extracts line and branch coverage
    * Builds coverage graphs
 
 2. **JDart stage**
-
    * Uses coverage information to guide concolic execution
-   * Explores uncovered execution paths
-   * Optionally generates new JUnit test cases
+   * Explores uncovered and partially covered execution paths
+   * Generates new JUnit test cases to cover those paths
 
 All stages are fully containerized and orchestrated via Docker Compose.
 
@@ -37,6 +35,7 @@ All stages are fully containerized and orchestrated via Docker Compose.
 ├── jdart
 │   ├── Dockerfile
 │   └── configs
+│       ├── jdart.jpf             # Default JDart config
 │       ├── sut.jpf               # Base JDart config (user-editable)
 │       ├── sut_gen.jpf           # AUTO-GENERATED from sut.yml
 │       └── coverage_heuristic.config
@@ -48,7 +47,7 @@ All stages are fully containerized and orchestrated via Docker Compose.
 │       └── run_pathcov_pipeline.sh
 ├── scripts
 │   └── generate_sut_configs.py   # Generates tool-specific configs from sut.yml
-├── run_pipeline.sh               # Single entry point for running the pipeline
+├── run_pipeline.sh               # Main script for running the pipeline
 └── requirements.txt              # Host-side Python dependencies
 ```
 
@@ -78,6 +77,8 @@ SUT_DIR=$HOME/dev/jdart-examples
 Requirements for `SUT_DIR`:
 
 * It must contain **compiled class files**
+* It must contain **compiled test files**
+* It must contain **source files**
 * The directory will be mounted into containers at `/sut`
 
 Example inside the container:
@@ -95,7 +96,7 @@ Example inside the container:
 
 `sut.yml` is the **single canonical configuration** that defines:
 
-* where compiled classes live
+* where class and source files live
 * which method is analyzed
 * where generated tests should be written
 
@@ -105,6 +106,7 @@ Example:
 sut:
   compiled_root: out/production/jdart-examples
   test_root: out/test/jdart-examples
+  source_root: src/main/java
 
 test_generation:
   generated_tests_dir_out: data/generated-tests
@@ -118,8 +120,8 @@ target:
       type: int
 
 analysis:
-  project_prefixes:
-    - test.testsuites
+  project_prefixes: # optional 
+    - test.testsuites 
 ```
 
 You only edit **this file** to change the SUT or the analyzed method.
@@ -223,7 +225,7 @@ Once everything is configured, run:
 ./run_pipeline.sh
 ```
 
-This single command will:
+This command will:
 
 1. Generate tool-specific configs from `configs/sut.yml`
 2. Start the Docker containers
@@ -234,7 +236,7 @@ No manual Docker commands are required.
 
 ## Generated Artifacts
 
-All generated data is written to a shared Docker volume mounted at:
+All process data is written to a shared Docker volume mounted at:
 
 ```
 /data
@@ -242,12 +244,12 @@ All generated data is written to a shared Docker volume mounted at:
 
 This includes:
 
-* coverage paths
+* coverage data
 * coverage graphs (`.dot`, `.svg`)
-* JDart instruction paths
-* generated test cases (if enabled)
 
 The volume persists across container runs.
+
+The test suite is genereted in the SUT directory, specified in the `sut.yml`. 
 
 ## Development Mode (Optional)
 
@@ -262,25 +264,27 @@ Create a `docker-compose.override.yml` file and bind-mount your locally cloned t
 ```yaml
 services:
   pathcov:
-    volumes:
-      - /path/to/outptut/data:/data
-      - /path/to/local-pathcov:/pathcov-project/pathcov
-      - /path/to/local-coverage-agent:/pathcov-project/coverage-agent
     environment:
-      PATHCOV_PROJECT_DIR=/work/pathcov
-      COVERAGE_AGENT_JAR=/work/pathcov/coverage-agent/target/coverage-agent-1.0.0.jar
-      JUNIT_CONSOLE_JAR=/work/pathcov/tools/junit-platform-console-standalone.jar
+      - ENV=dev
+
+    volumes:
+      - ./development/data:/data
+      - ../pathcov:/pathcov-project/pathcov
 
   jdart:
+    environment:
+      - ENV=dev
+
     volumes:
-      - /path/to/outptut/data:/data
+      - ./development/data:/data
+      - ../../jdart/:/jdart-project/jdart
 ```
 
 It is important that the /data mouts between the pathcov and the jdart service are the same.
 
 In your `.env` file, set `ENV=dev` and run the pipeline.
 
-* `docker-compose.override.yml` is **automatically applied** by Docker Compose
+* `docker-compose.override.yml` is automatically applied by Docker Compose
 * Production images remain unchanged
 * You can override:
   * tool source directories
@@ -298,6 +302,7 @@ No script changes are required.
   * Mounts:
     * `/sut` (SUT)
     * `/configs` (Pathcov configs)
+    * `/scripts` (Pathcov scripts)
     * `/data` (shared artifacts)
 * **jdart container**
   * Runs JDart/JPF
@@ -333,7 +338,7 @@ vim jdart/configs/sut.jpf   # optional
 
 In production mode, the coverage graph is generated in a Docker volume. To easily see the coverage graph, run the pipeline in development mode by setting `ENV=dev` in your `.env` file. Specify a bind-mount to your output folder in the `docker-compose.override.yml` file: 
 
-```
+```yaml
 services:
   pathcov:
     environment:
@@ -343,6 +348,9 @@ services:
       - ./development/data:/data
 
   jdart:
+    environment:
+      - ENV=dev
+
     volumes:
       - ./development/data:/data
 ```
