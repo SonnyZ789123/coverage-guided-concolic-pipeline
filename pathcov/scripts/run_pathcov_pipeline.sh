@@ -89,7 +89,7 @@ run_junit_with_agent() {
     -cp "$JUNIT_CONSOLE_JAR:$TEST_CLASS_PATH:$CLASS_PATH" \
     org.junit.platform.console.ConsoleLauncher \
     --scan-classpath \
-    > /dev/null
+    > /dev/null 2>&1
 
   local exit_code=$?
   set -e
