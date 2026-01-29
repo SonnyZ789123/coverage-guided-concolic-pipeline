@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-17
+FROM maven:3.9.9-eclipse-temurin-21
 
 LABEL maintainer="yoranmertens0@gmail.com"
 
@@ -10,7 +10,8 @@ RUN apt-get update && \
         git \
         graphviz \
         ca-certificates \
-        bash && \
+        bash \
+        curl && \
     rm -rf /var/lib/apt/lists/*
 
 ###############################################################################
