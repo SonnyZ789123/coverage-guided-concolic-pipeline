@@ -8,7 +8,7 @@ def run(cmd, cwd):
     result = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
         print(result.stderr, file=sys.stderr)
-        sys.exit(result.returncode)
+        raise RuntimeError(f"Command '{' '.join(cmd)}' failed with exit code {result.returncode}")
     return result.stdout.strip()
 
 
@@ -26,7 +26,7 @@ def detect_build_tool(project_dir: Path):
 
 def deps_dir_from_build_tool(build_tool: str, project_dir: Path) -> Path:
     if not build_tool: 
-        sys.exit("Could not detect build tool (Maven, Gradle, Ivy/Ant), please set deps_class_path and DEPS_DIR manually")
+        raise RuntimeError("Could not detect build tool (Maven, Gradle, Ivy/Ant), please set deps_class_path and DEPS_DIR manually")
 
     home = Path.home()
 
@@ -58,7 +58,7 @@ def deps_dir_from_build_tool(build_tool: str, project_dir: Path) -> Path:
         # Fallback: current project dir (last resort)
         return project_dir
 
-    sys.exit(f"Build tool '{build_tool}' not supported for deps dir detection")
+    raise RuntimeError(f"Build tool '{build_tool}' not supported for deps dir detection")
 
 
 # ---------- MAVEN (compile + runtime + test) ----------
@@ -119,11 +119,11 @@ def ivy_classpath(project_dir: Path):
 def detect_deps_classpath(project_dir_str: str):
     project_dir = Path(project_dir_str).resolve()
     if not project_dir.exists():
-        sys.exit("Project directory does not exist")
+        raise RuntimeError("Project directory does not exist")
 
     tool = detect_build_tool(project_dir)
     if not tool:
-        sys.exit("Could not detect build tool (Maven, Gradle, Ivy/Ant)")
+        raise RuntimeError("Could not detect build tool (Maven, Gradle, Ivy/Ant)")
 
     if tool == "maven":
         cp = maven_classpath(project_dir)
@@ -132,7 +132,7 @@ def detect_deps_classpath(project_dir_str: str):
     elif tool == "ivy":
         cp = ivy_classpath(project_dir)
     else:
-        sys.exit(f"Build tool '{tool}' detected but not supported for dependency extraction")
+        raise RuntimeError(f"Build tool '{tool}' detected but not supported for dependency extraction")
 
     return cp
 
