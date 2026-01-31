@@ -12,7 +12,6 @@ services:
       - pipeline-data:/data
       - ./pathcov/configs:/configs:ro
       - ./pathcov/scripts:/scripts:ro
-      - ${SUT_DIR}:/sut
     working_dir: /pathcov-project
     stdin_open: true
     tty: true
@@ -30,7 +29,6 @@ services:
     volumes:
       - pipeline-data:/data
       - ./jdart/configs:/configs:ro
-      - ${SUT_DIR}:/sut
     working_dir: /jdart-project
     stdin_open: true
     tty: true

@@ -4,18 +4,18 @@ from dotenv import dotenv_values
 
 SUT_ENV_FILE = Path("sut.env")
 CONTAINER_ENV_FILE = Path("container.env")
-OUTPUT_FILE = Path("docker-compose.deps.yml")
+OUTPUT_FILE = Path("docker-compose.sut.yml")
 
 
 def main():
     sut_env = dotenv_values(SUT_ENV_FILE) if SUT_ENV_FILE.exists() else {}
     container_env = dotenv_values(CONTAINER_ENV_FILE) if CONTAINER_ENV_FILE.exists() else {}
 
-    deps_dir = (sut_env.get("DEPS_DIR") or "").strip()
-    container_deps_dir = (container_env.get("CONTAINER_DEPS_DIR") or "").strip()
+    sut_dir = (sut_env.get("SUT_DIR") or "").strip()
+    container_sut_dir = (container_env.get("CONTAINER_SUT_DIR") or "").strip()
 
-    if not deps_dir or not container_deps_dir:
-        print("DEPS_DIR or CONTAINER_DEPS_DIR not set — removing deps override file if present.")
+    if not sut_dir or not container_sut_dir:
+        print("SUT_DIR or CONTAINER_SUT_DIR not set — removing sut override file if present.")
         if OUTPUT_FILE.exists():
             OUTPUT_FILE.unlink()
         return
@@ -23,17 +23,17 @@ def main():
     content = f"""services:
   pathcov:
     volumes:
-      - {deps_dir}:{container_deps_dir}:ro
+      - {sut_dir}:{container_sut_dir}
 
   jdart:
     volumes:
-      - {deps_dir}:{container_deps_dir}:ro
+      - {sut_dir}:{container_sut_dir}
 """
 
     OUTPUT_FILE.write_text(content)
     print(f"Generated {OUTPUT_FILE}")
-    print(f"  Host deps dir: {deps_dir}")
-    print(f"  Container mount: {container_deps_dir}")
+    print(f"  Host SUT dir: {sut_dir}")
+    print(f"  Container mount: {container_sut_dir}")
 
 
 if __name__ == "__main__":
