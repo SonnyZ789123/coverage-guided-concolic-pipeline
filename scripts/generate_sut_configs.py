@@ -50,17 +50,22 @@ if not deps_dir and (deps_class_path is None or deps_class_path != ""):
     build_tool = detect_build_tool(Path(sut_dir))
     deps_dir = str(deps_dir_from_build_tool(build_tool, Path(sut_dir))) 
 
-# TODO: make shared constant more explicit between here and the Dockerfile
-CONTAINER_REPO = "/dependencies"
+load_dotenv(dotenv_path=Path("container.env"))
 
+container_deps_dir = os.getenv("CONTAINER_DEPS_DIR")
+
+if not container_deps_dir:
+    raise RuntimeError("CONTAINER_DEPS_DIR not set in container.env")
+
+# Rewrite deps classpath to container paths
 deps_cp = None
 # Auto-detect classpath
 if deps_class_path is None:
     raw_cp = detect_deps_classpath(sut_dir) if deps_class_path is None else deps_class_path
-    deps_cp = rewrite_classpath(deps_dir, CONTAINER_REPO, raw_cp)
+    deps_cp = rewrite_classpath(deps_dir, container_deps_dir, raw_cp)
 # deps_class_path override, and it's not empty
 elif deps_class_path != "":
-    deps_cp = rewrite_classpath(deps_dir, CONTAINER_REPO, deps_class_path)
+    deps_cp = rewrite_classpath(deps_dir, container_deps_dir, deps_class_path)
 
 has_deps = deps_cp is not None
 
