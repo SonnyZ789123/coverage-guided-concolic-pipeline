@@ -2,7 +2,7 @@
 import sys
 
 
-def rewrite_classpath(original_dir: str, new_prefix: str, classpath: str) -> None:
+def rewrite_classpath(original_dir: str, new_prefix: str, classpath: str) -> str:
     if not classpath:
         return ""
 
@@ -13,7 +13,7 @@ def rewrite_classpath(original_dir: str, new_prefix: str, classpath: str) -> Non
         if p == original_dir or p.startswith(original_dir + "/"):
             rewritten.append(p.replace(original_dir, new_prefix, 1))
         else:
-            sys.exit(f"Error: Classpath entry '{p}' does not start with original deps dir '{original_dir}'")
+            raise RuntimeError(f"Error: Classpath entry '{p}' does not start with original deps dir '{original_dir}'")
 
     return ":".join(rewritten)
 
