@@ -8,4 +8,6 @@ development/data
 # Ignore generated config files
 jdart/configs/sut_gen.jpf
 pathcov/configs
+
 docker-compose.deps.yml
+docker-compose.sut.yml
