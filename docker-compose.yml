@@ -3,15 +3,16 @@ services:
     image: sonnyz789123/pathcov-image:2.0.0
     environment:
       - ENV=prod
-      - DATA_DIR=/data
-      - CONFIGS_DIR=/configs
-      - SCRIPTS_DIR=/scripts
-      - SUT_DIR=/sut
+      - DATA_DIR=${CONTAINER_DATA_DIR}
+      - CONFIGS_DIR=${CONTAINER_CONFIGS_DIR}
+      - SCRIPTS_DIR=${CONTAINER_SCRIPTS_DIR}
+      - SUT_DIR=${CONTAINER_SUT_DIR}
+      - DEPS_DIR=${CONTAINER_DEPS_DIR}
     container_name: pathcov
     volumes:
-      - pipeline-data:/data
-      - ./pathcov/configs:/configs:ro
-      - ./pathcov/scripts:/scripts:ro
+      - pipeline-data:${CONTAINER_DATA_DIR}
+      - ./pathcov/configs:${CONTAINER_CONFIGS_DIR}:ro
+      - ./pathcov/scripts:${CONTAINER_SCRIPTS_DIR}:ro
     working_dir: /pathcov-project
     stdin_open: true
     tty: true
@@ -21,14 +22,15 @@ services:
     platform: linux/amd64
     environment:
       - ENV=prod
-      - DATA_DIR=/data
-      - CONFIGS_DIR=/configs
-      - SCRIPTS_DIR=/scripts
-      - SUT_DIR=/sut
+      - DATA_DIR=${CONTAINER_DATA_DIR}
+      - CONFIGS_DIR=${CONTAINER_CONFIGS_DIR}
+      - SCRIPTS_DIR=${CONTAINER_SCRIPTS_DIR}
+      - SUT_DIR=${CONTAINER_SUT_DIR}
+      - DEPS_DIR=${CONTAINER_DEPS_DIR}
     container_name: jdart
     volumes:
-      - pipeline-data:/data
-      - ./jdart/configs:/configs:ro
+      - pipeline-data:${CONTAINER_DATA_DIR}
+      - ./jdart/configs:${CONTAINER_CONFIGS_DIR}:ro
     working_dir: /jdart-project
     stdin_open: true
     tty: true
