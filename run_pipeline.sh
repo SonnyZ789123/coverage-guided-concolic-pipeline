@@ -2,16 +2,24 @@
 set -Eeuo pipefail
 
 # ============================================================
-# Load .env if present (for shell scripts)
+# Load host-side variables (.env)
 # ============================================================
 
 if [[ -f .env ]]; then
-  # Export all variables from .env
   set -a
   source .env
   set +a
 fi
 
+# ============================================================
+# Load container-side path config (container.env)
+# ============================================================
+
+if [[ -f container.env ]]; then
+  set -a
+  source container.env
+  set +a
+fi
 
 # ============================================================
 # CONFIG
@@ -19,17 +27,14 @@ fi
 
 ENVIRONMENT="${ENV:-prod}"
 
-# Docker Compose services
 PATHCOV_SERVICE="pathcov"
 JDART_SERVICE="jdart"
 
-# Scripts / configs inside containers
-PATHCOV_SCRIPT="/scripts/run_pathcov_pipeline.sh"
-SUT_CONFIG="/configs/sut.config"
-JDART_JPF_CONFIG="/configs/sut.jpf"
+PATHCOV_SCRIPT="${CONTAINER_SCRIPTS_DIR}/run_pathcov_pipeline.sh"
+SUT_CONFIG="${CONTAINER_CONFIGS_DIR}/sut.config"
+JDART_JPF_CONFIG="${CONTAINER_CONFIGS_DIR}/sut.jpf"
 
-# Optional arguments
-DATA_DIR="/data"
+DATA_DIR="${CONTAINER_DATA_DIR}"
 
 # ============================================================
 # LOGGING
@@ -40,29 +45,54 @@ log() {
 }
 
 # ============================================================
+# Compose file stack builder
+# ============================================================
+
+compose_up() {
+  FILES="-f docker-compose.yml"
+
+  [[ -f docker-compose.override.yml ]] && FILES="$FILES -f docker-compose.override.yml"
+  [[ -f docker-compose.sut.yml ]] && FILES="$FILES -f docker-compose.sut.yml"
+  [[ -f docker-compose.deps.yml ]] && FILES="$FILES -f docker-compose.deps.yml"
+
+  docker compose --env-file container.env $FILES up -d
+}
+
+compose_exec() {
+  FILES="-f docker-compose.yml"
+
+  [[ -f docker-compose.override.yml ]] && FILES="$FILES -f docker-compose.override.yml"
+  [[ -f docker-compose.sut.yml ]] && FILES="$FILES -f docker-compose.sut.yml"
+  [[ -f docker-compose.deps.yml ]] && FILES="$FILES -f docker-compose.deps.yml"
+
+  docker compose --env-file container.env $FILES exec "$@"
+}
+
+# ============================================================
 # MAIN
 # ============================================================
 
 main() {
-  log "⚙️ Setting up environment for '$ENVIRONMENT'"
+  log "⚙️ Environment: $ENVIRONMENT"
 
   log "⚙️ Generating tool-specific configs from sut.yml"
   python3 scripts/generate_sut_configs.py
 
-  log "⚙️ Starting containers"
+  log "⚙️ Generating docker-compose.sut.yml for SUT"
+  python3 scripts/generate_sut_compose.py
 
-  if [[ "$ENVIRONMENT" == "prod" ]]; then
-    docker compose -f docker-compose.yml up -d
-  else
+  if [[ "$ENVIRONMENT" == "dev" ]]; then
     mkdir -p ./development/data
-    docker compose up -d
   fi
 
+  log "⚙️ Starting containers"
+  compose_up
+
   log "⚙️ Running pathcov stage"
-  docker compose exec "$PATHCOV_SERVICE" "$PATHCOV_SCRIPT" "$SUT_CONFIG" "$DATA_DIR"
+  compose_exec "$PATHCOV_SERVICE" "$PATHCOV_SCRIPT" "$SUT_CONFIG" "$DATA_DIR"
 
   log "⚙️ Running JDart / JPF stage"
-  docker compose exec "$JDART_SERVICE" /jdart-project/jpf-core/bin/jpf "$JDART_JPF_CONFIG"
+  compose_exec "$JDART_SERVICE" /jdart-project/jpf-core/bin/jpf "$JDART_JPF_CONFIG"
 
   log "✅ Pipeline completed successfully"
 }
