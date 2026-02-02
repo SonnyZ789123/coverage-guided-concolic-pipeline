@@ -102,18 +102,18 @@ has_test_deps = test_deps_cp is not None
 # -------------------------------
 # Set the compiled (test) root to absolute paths in container
 # -------------------------------
-
-compiled_root = f"{sut_dir}/{compiled_root}"
-test_root = f"{sut_dir}/{test_root}"
-source_root = f"{sut_dir}/{source_root}"
-
-# -------------------------------
-# Generate Pathcov config
-# -------------------------------
 container_sut_dir = os.getenv("CONTAINER_SUT_DIR")
 if not container_sut_dir:
     raise RuntimeError("CONTAINER_SUT_DIR not set in container.env")
 
+
+compiled_root = f"{container_sut_dir}/{compiled_root}"
+test_root = f"{container_sut_dir}/{test_root}"
+source_root = f"{container_sut_dir}/{source_root}"
+
+# -------------------------------
+# Generate Pathcov config
+# -------------------------------
 pathcov_sig = f"<{cls}: {ret} {method}({param_types})>"
 
 pathcov_cfg = f"""# ============================================================
