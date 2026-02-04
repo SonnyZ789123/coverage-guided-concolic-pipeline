@@ -51,7 +51,11 @@ log() {
 compose_up() {
   FILES="-f docker-compose.yml"
 
-  [[ -f docker-compose.override.yml ]] && FILES="$FILES -f docker-compose.override.yml"
+  # Only include override in NON-dev environments
+  if [[ "$ENVIRONMENT" != "dev" && -f docker-compose.override.yml ]]; then
+    FILES="$FILES -f docker-compose.override.yml"
+  fi
+
   [[ -f docker-compose.sut.yml ]] && FILES="$FILES -f docker-compose.sut.yml"
   [[ -f docker-compose.deps.yml ]] && FILES="$FILES -f docker-compose.deps.yml"
 
@@ -61,12 +65,17 @@ compose_up() {
 compose_exec() {
   FILES="-f docker-compose.yml"
 
-  [[ -f docker-compose.override.yml ]] && FILES="$FILES -f docker-compose.override.yml"
+  # Only include override in NON-dev environments
+  if [[ "$ENVIRONMENT" != "dev" && -f docker-compose.override.yml ]]; then
+    FILES="$FILES -f docker-compose.override.yml"
+  fi
+
   [[ -f docker-compose.sut.yml ]] && FILES="$FILES -f docker-compose.sut.yml"
   [[ -f docker-compose.deps.yml ]] && FILES="$FILES -f docker-compose.deps.yml"
 
   docker compose --env-file container.env $FILES exec "$@"
 }
+
 
 # ============================================================
 # MAIN
