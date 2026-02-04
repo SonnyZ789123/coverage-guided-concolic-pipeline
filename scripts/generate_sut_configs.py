@@ -119,7 +119,7 @@ pathcov_sig = f"<{cls}: {ret} {method}({param_types})>"
 pathcov_cfg = f"""# ============================================================
 # SUT configuration (AUTO-GENERATED)
 # ============================================================
-# Paths should be relative to the root given in the .env file
+# Paths should be relative to the root given in the sut.env file
 
 # Compiled classes
 COMPILED_ROOT="{compiled_root}"
