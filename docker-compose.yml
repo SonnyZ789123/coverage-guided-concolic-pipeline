@@ -1,6 +1,6 @@
 services:
   pathcov:
-    image: sonnyz789123/pathcov-image:2.0.0
+    image: sonnyz789123/pathcov-image:2.1.0
     environment:
       - ENV=prod
       - DATA_DIR=${CONTAINER_DATA_DIR}
@@ -18,7 +18,7 @@ services:
     tty: true
 
   jdart:
-    image: sonnyz789123/jdart-image:2.0.0
+    image: sonnyz789123/jdart-image:2.1.0
     platform: linux/amd64
     environment:
       - ENV=prod
