@@ -30,7 +30,7 @@ ENVIRONMENT="${ENV:-prod}"
 PATHCOV_SERVICE="pathcov"
 JDART_SERVICE="jdart"
 
-PATHCOV_SCRIPT="${CONTAINER_SCRIPTS_DIR}/run_pathcov_pipeline.sh"
+PATHCOV_SCRIPT="${CONTAINER_SCRIPTS_DIR}/run_pipeline.sh"
 SUT_CONFIG="${CONTAINER_CONFIGS_DIR}/sut.config"
 JDART_JPF_CONFIG="${CONTAINER_CONFIGS_DIR}/sut.jpf"
 
@@ -51,8 +51,7 @@ log() {
 compose_up() {
   FILES="-f docker-compose.yml"
 
-  # Only include override in NON-dev environments
-  if [[ "$ENVIRONMENT" != "dev" && -f docker-compose.override.yml ]]; then
+  if [[ "$ENVIRONMENT" == "dev" && -f docker-compose.override.yml ]]; then
     FILES="$FILES -f docker-compose.override.yml"
   fi
 
@@ -65,8 +64,7 @@ compose_up() {
 compose_exec() {
   FILES="-f docker-compose.yml"
 
-  # Only include override in NON-dev environments
-  if [[ "$ENVIRONMENT" != "dev" && -f docker-compose.override.yml ]]; then
+  if [[ "$ENVIRONMENT" == "dev" && -f docker-compose.override.yml ]]; then
     FILES="$FILES -f docker-compose.override.yml"
   fi
 
@@ -89,6 +87,8 @@ main() {
 
   log "⚙️ Generating docker-compose.sut.yml for SUT"
   python3 scripts/generate_sut_compose.py
+
+  mkdir -p "./output"  # Ensure output directory exists for mounting
 
   if [[ "$ENVIRONMENT" == "dev" ]]; then
     mkdir -p ./development/data
