@@ -5,6 +5,17 @@ readonly PATHCOV_JAR="${PATHCOV_JAR:?PATHCOV_JAR not set}"
 
 source "$SCRIPTS_DIR/common/pipeline_common.sh"
 
+write_cg_classes() {
+  log "⚙️ Writing CG classes (PROD)"
+
+  java -cp "$PATHCOV_JAR" \
+    com.kuleuven.cg.WriteCallGraphClasses \
+    $CLASS_PATH \
+    "$FULLY_QUALIFIED_METHOD_SIGNATURE" \
+    $CG_CLASSES_OUTPUT_PATH \
+    $PROJECT_PREFIXES
+}
+
 generate_coverage_data() {
   log "⚙️ Exporting coverage data (PROD)"
 
@@ -12,7 +23,7 @@ generate_coverage_data() {
     "$INTELLIJ_COVERAGE_REPORT_PATH" \
     "$COMPILED_ROOT" \
     "$SOURCE_PATH" \
-    "$TARGET_CLASS" \
+    "$CG_CLASSES_OUTPUT_PATH" \
     "$COVERAGE_EXPORT_OUTPUT_PATH" \
     "$EXPORTER_CONFIG_PATH"
 
