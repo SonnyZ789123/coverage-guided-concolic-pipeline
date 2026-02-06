@@ -6,6 +6,22 @@ readonly PATHCOV_DIR="$PATHCOV_PROJECT_DIR/pathcov"
 
 source "$SCRIPTS_DIR/common/pipeline_common.sh"
 
+write_cg_classes() {
+  log "⚙️ Writing CG classes (DEV, Maven)"
+
+  pushd "$PATHCOV_DIR" > /dev/null
+
+  mvn exec:java \
+    -Dexec.mainClass="com.kuleuven.cg.WriteCallGraphClasses" \
+    -Dexec.args=" \
+      $CLASS_PATH \
+      \"$FULLY_QUALIFIED_METHOD_SIGNATURE\" \
+      $CG_CLASSES_OUTPUT_PATH \
+      $PROJECT_PREFIXES"
+
+  popd > /dev/null
+}
+
 generate_coverage_data() {
   log "⚙️ Exporting coverage data (DEV, Maven)"
 
@@ -15,7 +31,7 @@ generate_coverage_data() {
     "$INTELLIJ_COVERAGE_REPORT_PATH" \
     "$COMPILED_ROOT" \
     "$SOURCE_PATH" \
-    "$TARGET_CLASS" \
+    "$CG_CLASSES_OUTPUT_PATH" \
     "$COVERAGE_EXPORT_OUTPUT_PATH" \
     "$EXPORTER_CONFIG_PATH"
 
