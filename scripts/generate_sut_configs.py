@@ -7,6 +7,7 @@ import yaml
 from detect_deps_classpath import detect_build_tool, detect_runtime_deps_classpath, detect_test_deps_classpath, deps_dir_from_build_tool
 from rewrite_classpath import rewrite_classpath
 from generate_deps_compose import generate_deps_compose
+from jdart_format_classpath import jdart_format_classpath
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -150,7 +151,7 @@ jdart_cfg = f"""# ============================================================
 # AUTO-GENERATED — DO NOT EDIT
 # ============================================================
 # Compiled classes
-classpath={compiled_root}{f':{runtime_deps_cp}' if has_runtime_deps else ""}
+classpath={jdart_format_classpath(compiled_root, runtime_deps_cp, has_runtime_deps)}
 
 # Class under analysis
 target={cls}
