@@ -97,10 +97,17 @@ java \
 generate_svg() {
   log "⚙️ Generating SVG visualization"
 
-  dot -Tsvg \
-    "$VISUALIZATION_DIR/$DOT_FILE_NAME" \
-    -o "$VISUALIZATION_DIR/$SVG_FILE_NAME" \
-    > /dev/null 2>&1
+  if ! timeout 10s dot -Tsvg \
+      "$VISUALIZATION_DIR/$DOT_FILE_NAME" \
+      -o "$VISUALIZATION_DIR/$SVG_FILE_NAME" \
+      > /dev/null 2>&1; then
+
+    if [[ $? -eq 124 ]]; then
+      warn "⚠️ SVG generation timed out, dot file may be too large or complex to visualize"
+    else
+      warn "❌ SVG generation failed"
+    fi
+  fi
 }
 
 # ============================================================
