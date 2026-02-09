@@ -110,6 +110,7 @@ main_common() {
   generate_coverage_data
   generate_block_map
   generate_coverage_graph
+  calculate_branch_coverage
   generate_svg
   log "✅ Pipeline completed successfully"
 }

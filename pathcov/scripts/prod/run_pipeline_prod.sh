@@ -56,4 +56,12 @@ generate_coverage_graph() {
     $PROJECT_PREFIXES
 }
 
+calculate_branch_coverage() {
+  log "⚙️ Calculating branch coverage (PROD)"
+
+  java -cp "$PATHCOV_JAR" \
+    com.kuleuven.coverage.GenerateBranchCoverage \
+    $BLOCK_MAP_PATH
+}
+
 main_common "$@"
