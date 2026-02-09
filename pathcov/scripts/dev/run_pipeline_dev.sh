@@ -76,4 +76,16 @@ generate_coverage_graph() {
   popd > /dev/null
 }
 
+calculate_branch_coverage() {
+  log "⚙️ Calculating branch coverage (DEV, Maven)"
+
+  pushd "$PATHCOV_DIR" > /dev/null
+
+  mvn exec:java \
+    -Dexec.mainClass="com.kuleuven.coverage.GenerateBranchCoverage" \
+    -Dexec.args="$BLOCK_MAP_PATH"
+
+  popd > /dev/null
+}
+
 main_common "$@"
