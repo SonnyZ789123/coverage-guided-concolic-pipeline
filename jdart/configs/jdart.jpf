@@ -31,3 +31,7 @@ jdart.configs.all_fields_symbolic.symbolic.include=this.*
 jdart.exploration=gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy(/configs/coverage_heuristic.config)
 
 jdart.tests.gen=true
+
+# Timed evaluation
+z3.timeout=1000
+jdart.termination=gov.nasa.jpf.jdart.termination.TimedTermination,0,0,30
