@@ -26,12 +26,34 @@ JDART_JPF_CONFIG="${CONTAINER_CONFIGS_DIR}/sut.jpf"
 
 DATA_DIR="${CONTAINER_DATA_DIR}"
 
+OUTPUT_DIR="./output"
+DEV_DATA_DIR="./development/data"
+
 # ============================================================
 # LOGGING
 # ============================================================
 
 log() {
   echo "[INFO] $*"
+}
+
+# ============================================================
+# SAFE DIRECTORY CLEARING
+# ============================================================
+
+clear_directory() {
+  local dir="$1"
+
+  # Safety checks
+  if [[ -z "$dir" || "$dir" == "/" ]]; then
+    echo "[ERROR] Refusing to clear unsafe directory: '$dir'" >&2
+    exit 1
+  fi
+
+  if [[ -d "$dir" ]]; then
+    log "🧹 Clearing directory: $dir"
+    rm -rf "${dir:?}/"*
+  fi
 }
 
 # ============================================================
@@ -72,17 +94,26 @@ compose_exec() {
 main() {
   log "⚙️ Environment: $ENVIRONMENT"
 
+  # Ensure directories exist
+  mkdir -p "$OUTPUT_DIR"
+
+  if [[ "$ENVIRONMENT" == "dev" ]]; then
+    mkdir -p "$DEV_DATA_DIR"
+  fi
+
+  # Clear output directory always
+  clear_directory "$OUTPUT_DIR"
+
+  # Clear development directory only in dev mode
+  if [[ "$ENVIRONMENT" == "dev" ]]; then
+    clear_directory "$DEV_DATA_DIR"
+  fi
+
   log "⚙️ Generating tool-specific configs from sut.yml"
   python3 scripts/generate_sut_configs.py
 
   log "⚙️ Generating docker-compose.sut.yml for SUT"
   python3 scripts/generate_sut_compose.py
-
-  mkdir -p "./output"  # Ensure output directory exists for mounting
-
-  if [[ "$ENVIRONMENT" == "dev" ]]; then
-    mkdir -p ./development/data
-  fi
 
   log "⚙️ Starting containers"
   compose_up
