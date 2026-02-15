@@ -24,6 +24,8 @@ params = sut_cfg["target"]["parameters"]
 param_types = ",".join(p["type"] for p in params)
 param_named = ",".join(f'{p["name"]}:{p["type"]}' for p in params)
 
+entry_class = sut_cfg["entry"]["class"]
+
 if "analysis" not in sut_cfg or "project_prefixes" not in sut_cfg["analysis"]:
     project_prefixes = ""
 else:
@@ -166,7 +168,7 @@ jdart_cfg = f"""# ============================================================
 classpath={jdart_format_classpath(compiled_root, runtime_deps_cp, has_runtime_deps)}
 
 # Class under analysis
-target={cls}
+target={entry_class}
 
 concolic.method.{method}={jdart_method}
 concolic.method={method}
