@@ -20,7 +20,7 @@ services:
     tty: true
 
   jdart:
-    image: sonnyz789123/jdart-image:2.4.0
+    image: sonnyz789123/jdart-image:2.4.1
     platform: linux/amd64
     environment:
       - ENV=prod
