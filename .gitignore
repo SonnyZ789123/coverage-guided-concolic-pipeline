@@ -5,6 +5,8 @@ scripts/__pycache__/
 # Generated data directory for development environment
 development/data
 
+block-diff/shared
+
 # Ouput directory
 output/
 
