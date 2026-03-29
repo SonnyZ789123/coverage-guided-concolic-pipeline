@@ -35,3 +35,5 @@ jdart.tests.gen=true
 # Timed evaluation
 z3.timeout=5000
 jdart.termination=gov.nasa.jpf.jdart.termination.TimedTermination,0,0,30
+
+jdart.tests.junit_version=5
