@@ -1,10 +1,113 @@
+# default JDart settings
 @include = ./jdart.jpf
+# auto-generated from configs/sut.yml (target, classpath, methods)
 @include = ./sut_gen.jpf
 
-# ============================================================
-# SUT configuration
-# ============================================================
+# =============================================================================
+# SUT-specific JDart configuration
+# -----------------------------------------------------------------------------
+# Hand-edited overrides for this SUT. Values here take precedence over jdart.jpf.
+# Docs:
+#   coverage-guided-concolic-pipeline/README.md  (Step 3)
+#   master-thesis-obsidian-vault/Documentation/JDart Pipeline.md
+# =============================================================================
 
 
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+# Levels: info | warning | fine | finer | finest | severe
+# jdart.evaluation : elapsed=Xms branch_coverage=Y% on every coverage change
+# jdart            : high-level config summary + termination reasons
+# jdart.debug      : very verbose CFG / priority-queue tracing (off by default)
+# log.finest = jdart.debug
+log.info = jdart,jdart.evaluation
 
 
+# -----------------------------------------------------------------------------
+# Constraints tree dump
+# -----------------------------------------------------------------------------
+# Printing the tree is noisy on larger SUTs; disable unless debugging.
+# jdart.tree.dont.print     = false
+# jdart.tree.hide_valuations = false
+
+
+# -----------------------------------------------------------------------------
+# Test-suite generation
+# -----------------------------------------------------------------------------
+# jdart.tests.gen      : toggled on in jdart.jpf
+# jdart.tests.dir/pkg  : set by sut_gen.jpf from sut.yml
+# jdart.tests.suitename: override the generated test class name
+# jdart.tests.junit_version = 4 | 5   (default 5 in jdart.jpf)
+jdart.tests.junit_version = 4
+# jdart.tests.suitename = FinScoreEngineTestScoreTest
+
+
+# -----------------------------------------------------------------------------
+# Per-method tuning (optional)
+# -----------------------------------------------------------------------------
+# Attach a named config to the concolic method, then set its knobs.
+#   concolic.method.foo.config          = foo
+#   jdart.configs.foo.max_depth         = 100   # max node depth in execution tree
+#   jdart.configs.foo.max_nesting_depth = 5     # max nested method calls
+#   jdart.configs.foo.max_alt_depth     = 1     # max solver retries per node
+
+
+# -----------------------------------------------------------------------------
+# Input-parameter constraints (optional)
+# -----------------------------------------------------------------------------
+# Restrict the symbolic input space JDart explores. The variable names are the
+# parameter names of the concolic method (see configs/sut.yml). Supports
+# comparison, boolean, and arithmetic operators on primitive types. Paths whose
+# constraints are infeasible under these bounds are pruned before solving.
+# See README.md "Step 3" for more examples.
+#
+# Activate a named config, then attach constraints to it:
+#   concolic.method.classify.config = classify
+#   jdart.configs.classify.constraints = (age >= 18 && age <= 65 && income > 0)
+
+
+# -----------------------------------------------------------------------------
+# Exploration strategy
+# -----------------------------------------------------------------------------
+# Default (set in jdart.jpf):
+#   gov.nasa.jpf.jdart.exploration.CoverageHeuristicStrategy(/configs/coverage_heuristic.config)
+# Alternatives:
+#   gov.nasa.jpf.jdart.exploration.DFSStrategy
+#   gov.nasa.jpf.jdart.exploration.BFSStrategy
+# jdart.exploration = gov.nasa.jpf.jdart.exploration.DFSStrategy
+
+
+# -----------------------------------------------------------------------------
+# Coverage tracker (optional for DFS / BFS)
+# -----------------------------------------------------------------------------
+# The coverage heuristic loads its own block map from coverage_heuristic.config.
+# For DFS / BFS, uncomment the lines below to unlock:
+#   - jdart.evaluation progress logging
+#   - BranchCoverageTermination / TimedOrBranchCoverageTermination
+#   - IGNORE filtering of already-covered paths
+# jdart.coverage.block_map_path        = /data/blockmaps/icfg_block_map.json
+# jdart.coverage.ignore_covered_paths  = true
+
+
+# -----------------------------------------------------------------------------
+# Termination strategy  (pick one; comment the others out)
+# -----------------------------------------------------------------------------
+# Combined: stop on whichever fires first --> args = hours, minutes, seconds, coverage %
+# jdart.termination = gov.nasa.jpf.jdart.termination.TimedOrBranchCoverageTermination,0,0,30,95
+
+# Branch coverage only (requires a coverage tracker)
+# jdart.termination = gov.nasa.jpf.jdart.termination.BranchCoverageTermination,80
+
+# Wall-clock only --> args = hours, minutes, seconds
+# jdart.termination = gov.nasa.jpf.jdart.termination.TimedTermination,0,0,30
+
+# Fixed number of explored paths
+# jdart.termination = gov.nasa.jpf.jdart.termination.UpToFixedNumber,100
+
+
+# -----------------------------------------------------------------------------
+# Solver / misc
+# -----------------------------------------------------------------------------
+# z3.timeout = 5000                 # per-query solver timeout in ms (set in jdart.jpf)
+# classpath += :/sut/data/libraries/my-lib.jar    # add external library classpaths
