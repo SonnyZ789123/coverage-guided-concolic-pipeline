@@ -237,6 +237,33 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
                 kwargs.update(s=16)
             ax.scatter(t_ms / time_div, cov, marker=marker, **kwargs)
 
+    # Visual cue for the AUC integration window. When startup is excluded,
+    # shade the [0, min(t_1)] region — the common pre-exploration dead time
+    # that's excluded for every curve — and drop per-curve vertical ticks at
+    # each t_1 so the honest integration start for each strategy is visible.
+    if not args.include_startup:
+        t1s = [c.first_path_ms for c in curves if c.first_path_ms > 0]
+        if t1s:
+            shared_startup_ms = min(t1s)
+            ax.axvspan(
+                0,
+                shared_startup_ms / time_div,
+                color="#cccccc",
+                alpha=0.25,
+                zorder=0,
+                label="Startup (excluded from AUC)",
+            )
+            for curve in curves:
+                colour = DEFAULT_COLOURS.get(curve.label, None)
+                ax.axvline(
+                    curve.first_path_ms / time_div,
+                    color=colour or "#555555",
+                    linestyle=":",
+                    linewidth=1.0,
+                    alpha=0.7,
+                    zorder=1,
+                )
+
     # Threshold guide if everything looks like a TimedOrBranchCoverageTermination run.
     if args.threshold is not None:
         ax.axhline(
