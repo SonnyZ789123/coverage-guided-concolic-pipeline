@@ -108,7 +108,7 @@ def load_curve(tsv_path: Path, label: str | None, end_time_ms: int | None) -> Cu
 # matplotlib's default cycle.
 DEFAULT_COLOURS = {
     "dynamic-coverage-guided": "#1f77b4",  # blue
-    "dfs": "#9467bd",                       # purple (avoid red to not clash with ERROR markers)
+    "dfs": "#daa520",                       # goldenrod (avoid red to not clash with ERROR markers)
     "bfs": "#2ca02c",                       # green
 }
 
