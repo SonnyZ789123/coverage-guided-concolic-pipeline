@@ -9,13 +9,19 @@ one ``jdart.evaluation`` telemetry line:
 
     path_index  elapsed_ms  branch_coverage  path_type
 
-AUC is computed as a right-continuous step-function integral from ``t=0``
-(assumed ``0 %`` coverage) to ``T = --end-time`` (defaults to the last
-``elapsed_ms`` in the file). Between consecutive samples ``t_{i-1}`` and
-``t_i`` the coverage is held at ``cov_{i-1}`` — i.e. the coverage "jumps" at
-the moment a path completes. This matches the convention used by the
-evaluation notes and is a conservative lower bound on true achieved coverage
-(mid-path progress is invisible to us).
+AUC is computed as a right-continuous step-function integral of the JDart
+branch-coverage curve. Between consecutive samples ``t_{i-1}`` and ``t_i``
+the coverage is held at ``cov_{i-1}`` — i.e. the coverage "jumps" at the
+moment a path completes. This is a conservative lower bound on true
+achieved coverage (mid-path progress is invisible to us).
+
+By default the integration window is ``[t_1, T]`` — from the first path's
+completion time to ``T = --end-time`` (defaults to the last ``elapsed_ms``
+in the file). This excludes JPF / class-loading startup time, which is a
+fixed overhead unrelated to the exploration strategy, so different
+strategies can be compared on pure exploration efficiency. Pass
+``--include-startup`` to integrate from ``t=0`` instead (the old behaviour
+used in the first batch of evaluation notes).
 
 Usage::
 
@@ -46,27 +52,62 @@ class Curve:
     coverage: List[float]  # includes leading 0.0
     path_types: List[str]  # length == len(times_ms) - 1 (no type for the synthetic 0-point)
     end_time_ms: int
+    include_startup: bool = False
 
     @property
     def final_coverage(self) -> float:
         return self.coverage[-1]
 
     @property
+    def first_path_ms(self) -> int:
+        """Elapsed time of the first path sample (t_1). 0 if there are no samples."""
+        return self.times_ms[1] if len(self.times_ms) > 1 else 0
+
+    @property
+    def auc_start_ms(self) -> int:
+        """Lower bound of the AUC integration window."""
+        return 0 if self.include_startup else self.first_path_ms
+
+    @property
+    def auc_window_ms(self) -> int:
+        """Length of the AUC integration window."""
+        return max(self.end_time_ms - self.auc_start_ms, 0)
+
+    @property
     def auc_raw(self) -> float:
-        """Right-continuous step-function integral, in %·ms."""
+        """Right-continuous step-function integral over the AUC window, in %·ms.
+
+        Integration spans ``[auc_start_ms, end_time_ms]``. Between samples
+        ``t_{i-1}`` and ``t_i`` coverage is held at ``cov_{i-1}``. When
+        startup is excluded the ``[0, t_1)`` segment (coverage = 0) is
+        dropped, which doesn't change the raw %·ms value but is excluded
+        explicitly for clarity.
+        """
+        start = self.auc_start_ms
         total = 0.0
         for i in range(1, len(self.times_ms)):
-            total += self.coverage[i - 1] * (self.times_ms[i] - self.times_ms[i - 1])
-        total += self.coverage[-1] * (self.end_time_ms - self.times_ms[-1])
+            t_prev, t_cur = self.times_ms[i - 1], self.times_ms[i]
+            # Clip the segment to the integration window.
+            left = max(t_prev, start)
+            right = max(t_cur, start)
+            if right > left:
+                total += self.coverage[i - 1] * (right - left)
+        total += self.coverage[-1] * max(self.end_time_ms - self.times_ms[-1], 0)
         return total
 
     @property
     def auc_avg(self) -> float:
-        """Normalised AUC — average branch coverage over the run, in %."""
-        return self.auc_raw / self.end_time_ms if self.end_time_ms > 0 else 0.0
+        """Normalised AUC — average branch coverage over the window, in %."""
+        window = self.auc_window_ms
+        return self.auc_raw / window if window > 0 else 0.0
 
 
-def load_curve(tsv_path: Path, label: str | None, end_time_ms: int | None) -> Curve:
+def load_curve(
+    tsv_path: Path,
+    label: str | None,
+    end_time_ms: int | None,
+    include_startup: bool,
+) -> Curve:
     times: List[int] = [0]
     coverage: List[float] = [0.0]
     path_types: List[str] = []
@@ -100,6 +141,7 @@ def load_curve(tsv_path: Path, label: str | None, end_time_ms: int | None) -> Cu
         coverage=coverage,
         path_types=path_types,
         end_time_ms=end,
+        include_startup=include_startup,
     )
 
 
@@ -160,7 +202,23 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         plot_colour = line.get_color()
 
         if not args.no_shade:
-            ax.fill_between(xs, 0, ys, step="post", alpha=0.08, color=plot_colour)
+            # Only shade the active-exploration window — the [0, t_1) segment
+            # where coverage is 0 has no area anyway, but when startup is
+            # excluded we also want the visual to reinforce that the AUC is
+            # measured from t_1 onwards.
+            shade_start = curve.auc_start_ms / time_div
+            shade_xs = [x for x in xs if x >= shade_start]
+            shade_ys = [y for x, y in zip(xs, ys) if x >= shade_start]
+            if shade_xs and shade_xs[0] > shade_start:
+                # Make sure the shaded region starts exactly at the window edge
+                # so the fill lines up with the vertical marker below.
+                idx = next(i for i, x in enumerate(xs) if x >= shade_start)
+                prev_y = ys[max(idx - 1, 0)]
+                shade_xs.insert(0, shade_start)
+                shade_ys.insert(0, prev_y)
+            ax.fill_between(
+                shade_xs, 0, shade_ys, step="post", alpha=0.08, color=plot_colour
+            )
 
         # Scatter per-path samples, coloured by path type. OK markers use the
         # line colour so the improvements stay associated with the strategy,
@@ -305,6 +363,13 @@ def main() -> None:
         action="store_true",
         help="Only print the AUC summary, do not render an image.",
     )
+    parser.add_argument(
+        "--include-startup",
+        action="store_true",
+        help="Integrate AUC from t=0 instead of from the first path's "
+        "completion time (t_1). Default excludes JPF / class-loading startup "
+        "so strategies are compared on pure exploration efficiency.",
+    )
     args = parser.parse_args()
 
     if args.threshold is not None and args.threshold < 0:
@@ -313,18 +378,28 @@ def main() -> None:
     labels = parse_labels(args.labels, len(args.inputs))
     curves: List[Curve] = []
     for tsv_path, label in zip(args.inputs, labels):
-        curves.append(load_curve(tsv_path, label, args.end_time))
+        curves.append(
+            load_curve(tsv_path, label, args.end_time, args.include_startup)
+        )
 
     # Text summary — goes to stdout regardless of --no-plot.
-    print(
-        f"{'label':<30}  {'T (ms)':>8}  {'final %':>8}  {'AUC (%·ms)':>12}  {'AUC avg %':>10}"
+    window_note = (
+        "integrated over [0, T]"
+        if args.include_startup
+        else "integrated over [t_1, T] (startup excluded)"
     )
-    print("-" * 76)
+    header = (
+        f"{'label':<30}  {'t_1 (ms)':>8}  {'T (ms)':>8}  "
+        f"{'final %':>8}  {'AUC (%·ms)':>12}  {'AUC avg %':>10}"
+    )
+    print(header)
+    print("-" * len(header))
     for c in curves:
         print(
-            f"{c.label:<30}  {c.end_time_ms:>8d}  {c.final_coverage:>8.2f}  "
-            f"{c.auc_raw:>12.1f}  {c.auc_avg:>10.2f}"
+            f"{c.label:<30}  {c.first_path_ms:>8d}  {c.end_time_ms:>8d}  "
+            f"{c.final_coverage:>8.2f}  {c.auc_raw:>12.1f}  {c.auc_avg:>10.2f}"
         )
+    print(f"({window_note})")
 
     if args.no_plot:
         return
