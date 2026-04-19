@@ -15,17 +15,28 @@ the coverage is held at ``cov_{i-1}`` — i.e. the coverage "jumps" at the
 moment a path completes. This is a conservative lower bound on true
 achieved coverage (mid-path progress is invisible to us).
 
-By default the integration window is ``[t_1, T]`` — from the first path's
-completion time to ``T = --end-time`` (defaults to the last ``elapsed_ms``
-in the file). This excludes JPF / class-loading startup time, which is a
-fixed overhead unrelated to the exploration strategy, so different
-strategies can be compared on pure exploration efficiency. The plotted
-x-axis is likewise **normalised** per curve: each curve is shifted so its
-own ``t_1`` lands at ``x = 0``, which puts all strategies on a shared
-"exploration time since first path" axis and removes the horizontal
-offset caused by varying boot times. Pass ``--include-startup`` to
-integrate from ``t=0`` and plot with an absolute elapsed-time axis
-(the old behaviour used in the first batch of evaluation notes).
+By default the integration window is ``[t_1, T_ext]`` — from the first
+path's completion time to the longest normalised end-time across all
+input curves. Strategies that terminated earlier are **extended at their
+final coverage** to reach ``T_ext``. This removes the window-length bias
+of per-own-window averaging (where a short run is penalised for
+spending a larger fraction of its window in the "climb" phase) and
+rewards strategies that reach the coverage plateau fastest.
+
+JPF / class-loading startup time is excluded: each curve is shifted so
+its own ``t_1`` lands at ``x = 0``, putting all strategies on a shared
+"exploration time since first path" axis.
+
+Pass ``--window-mode common`` to truncate to the shortest window
+instead; ``--window-mode own`` for each curve's natural window (the
+biased legacy behaviour). ``--include-startup`` integrates from ``t=0``
+and plots absolute elapsed time (used by the first batch of evaluation
+notes).
+
+**Caveat on extended mode**: the plateau extension is only meaningful
+when the early-terminating run stopped because of a coverage threshold.
+If a run timed out, its real trajectory would probably have kept
+climbing, so the extension underestimates what it would have reached.
 
 Usage::
 
@@ -57,6 +68,14 @@ class Curve:
     path_types: List[str]  # length == len(times_ms) - 1 (no type for the synthetic 0-point)
     end_time_ms: int
     include_startup: bool = False
+    # Where the AUC integration actually ends. Defaults to end_time_ms but can
+    # be extended past the last sample (extending at final coverage) or
+    # truncated below it (ignoring trailing samples) by the window-mode logic.
+    effective_end_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.effective_end_ms is None:
+            self.effective_end_ms = self.end_time_ms
 
     @property
     def final_coverage(self) -> float:
@@ -73,30 +92,43 @@ class Curve:
         return 0 if self.include_startup else self.first_path_ms
 
     @property
+    def auc_end_ms(self) -> int:
+        """Upper bound of the AUC integration window."""
+        return self.effective_end_ms  # type: ignore[return-value]
+
+    @property
     def auc_window_ms(self) -> int:
         """Length of the AUC integration window."""
+        return max(self.auc_end_ms - self.auc_start_ms, 0)
+
+    @property
+    def own_window_ms(self) -> int:
+        """Length of the curve's natural window (end_time_ms - t_1)."""
         return max(self.end_time_ms - self.auc_start_ms, 0)
 
     @property
     def auc_raw(self) -> float:
-        """Right-continuous step-function integral over the AUC window, in %·ms.
+        """Right-continuous step-function integral over ``[auc_start_ms, auc_end_ms]``.
 
-        Integration spans ``[auc_start_ms, end_time_ms]``. Between samples
-        ``t_{i-1}`` and ``t_i`` coverage is held at ``cov_{i-1}``. When
-        startup is excluded the ``[0, t_1)`` segment (coverage = 0) is
-        dropped, which doesn't change the raw %·ms value but is excluded
-        explicitly for clarity.
+        Between samples ``t_{i-1}`` and ``t_i`` coverage is held at
+        ``cov_{i-1}``. If ``auc_end_ms`` exceeds the last sample, coverage
+        is extended at ``coverage[-1]`` until ``auc_end_ms``. If
+        ``auc_end_ms`` precedes the last sample, samples beyond the window
+        are clipped.
         """
         start = self.auc_start_ms
+        end = self.auc_end_ms
+        if end <= start:
+            return 0.0
         total = 0.0
         for i in range(1, len(self.times_ms)):
             t_prev, t_cur = self.times_ms[i - 1], self.times_ms[i]
-            # Clip the segment to the integration window.
             left = max(t_prev, start)
-            right = max(t_cur, start)
+            right = min(max(t_cur, start), end)
             if right > left:
                 total += self.coverage[i - 1] * (right - left)
-        total += self.coverage[-1] * max(self.end_time_ms - self.times_ms[-1], 0)
+        # Plateau extension past the last sample, if requested.
+        total += self.coverage[-1] * max(end - max(self.times_ms[-1], start), 0)
         return total
 
     @property
@@ -190,15 +222,19 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
     offsets_ms = {
         id(c): (c.first_path_ms if normalize else 0) for c in curves
     }
-    # Use the longest post-normalisation run to size the x-axis.
-    x_max_ms = max(
-        c.end_time_ms - offsets_ms[id(c)] for c in curves
-    )
+    # Use the integration window (incl. any plateau extension) to size the
+    # x-axis, so the extended tail fits. For absolute mode this degenerates
+    # to max(end_time_ms).
+    x_max_ms = max(c.auc_end_ms - offsets_ms[id(c)] for c in curves)
     use_seconds = x_max_ms >= 2000
     time_div = 1000.0 if use_seconds else 1.0
     time_unit = "s" if use_seconds else "ms"
 
     fig, ax = plt.subplots(figsize=(9.5, 5.5))
+
+    # Track whether any curve ended up being plateau-extended — used later
+    # to add a legend entry explaining the dashed tail.
+    any_extension = False
 
     for curve in curves:
         colour = DEFAULT_COLOURS.get(curve.label, None)
@@ -206,10 +242,21 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         # Skip the synthetic (0, 0) leading point when normalising — the
         # real first sample already sits at x = 0 after shifting.
         start_idx = 1 if normalize else 0
-        xs = [
-            (t - offset) / time_div for t in curve.times_ms[start_idx:]
-        ] + [(curve.end_time_ms - offset) / time_div]
-        ys = list(curve.coverage[start_idx:]) + [curve.coverage[-1]]
+        # Natural curve segment ends at min(end_time_ms, auc_end_ms) — if the
+        # window truncates (common mode), we clip; if it extends, the
+        # natural segment ends at end_time_ms and an extension line follows.
+        natural_end_ms = min(curve.end_time_ms, curve.auc_end_ms)
+        natural_samples = [
+            (t, c) for t, c in zip(curve.times_ms[start_idx:], curve.coverage[start_idx:])
+            if t <= natural_end_ms
+        ]
+        xs = [(t - offset) / time_div for t, _ in natural_samples]
+        ys = [c for _, c in natural_samples]
+        # Cap the natural segment at natural_end_ms so step plotting ends
+        # precisely at that x.
+        if not xs or xs[-1] * time_div + offset < natural_end_ms:
+            xs.append((natural_end_ms - offset) / time_div)
+            ys.append(ys[-1] if ys else 0.0)
         # Right-continuous step: value in [t_{i-1}, t_i) is coverage[i-1], so
         # drawstyle="steps-post" (hold value until next x) matches exactly.
         line, = ax.step(
@@ -222,17 +269,41 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         )
         plot_colour = line.get_color()
 
+        # Plateau extension — only when auc_end_ms > end_time_ms.
+        extension_ys = []
+        if curve.auc_end_ms > curve.end_time_ms:
+            any_extension = True
+            ext_x0 = (curve.end_time_ms - offset) / time_div
+            ext_x1 = (curve.auc_end_ms - offset) / time_div
+            ax.plot(
+                [ext_x0, ext_x1],
+                [curve.final_coverage, curve.final_coverage],
+                linestyle=(0, (4, 3)),
+                linewidth=1.4,
+                color=plot_colour,
+                alpha=0.7,
+                zorder=2,
+            )
+            extension_ys = [(ext_x0, ext_x1, curve.final_coverage)]
+
         if not args.no_shade:
             ax.fill_between(
                 xs, 0, ys, step="post", alpha=0.08, color=plot_colour
             )
+            for x0, x1, y in extension_ys:
+                ax.fill_between(
+                    [x0, x1], 0, [y, y], alpha=0.05, color=plot_colour
+                )
 
         # Scatter per-path samples, coloured by path type. OK markers use the
         # line colour so the improvements stay associated with the strategy,
-        # but IGNORE/ERROR/DONT_KNOW use their own colour to pop out.
+        # but IGNORE/ERROR/DONT_KNOW use their own colour to pop out. Skip
+        # samples that fall outside the window (common-mode truncation).
         for t_ms, cov, ptype in zip(
             curve.times_ms[1:], curve.coverage[1:], curve.path_types
         ):
+            if t_ms > natural_end_ms:
+                continue
             marker, marker_colour = PATH_TYPE_MARKER.get(ptype, ("o", plot_colour))
             face = plot_colour if ptype == "OK" else marker_colour
             # matplotlib warns when edgecolor is given to an unfilled marker
@@ -280,10 +351,26 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         Line2D([0], [0], marker="s", linestyle="", color="tab:red",
                markersize=6, label="ERROR"),
     ]
+    if any_extension:
+        pt_handles.append(
+            Line2D([0], [0], linestyle=(0, (4, 3)), color="black",
+                   linewidth=1.4, alpha=0.7,
+                   label="Plateau extension (terminated early, held at final cov.)")
+        )
     curve_legend = ax.legend(loc="lower right", fontsize=9, framealpha=0.95)
     ax.add_artist(curve_legend)
-    ax.legend(handles=pt_handles, loc="upper left", fontsize=8,
-              title="Path type", title_fontsize=8, framealpha=0.95)
+    # Place the path-type legend outside the axes (upper-right) so it doesn't
+    # occlude samples near the top of the curves.
+    ax.legend(
+        handles=pt_handles,
+        loc="upper left",
+        bbox_to_anchor=(1.02, 1.0),
+        borderaxespad=0.0,
+        fontsize=8,
+        title="Path type",
+        title_fontsize=8,
+        framealpha=0.95,
+    )
 
     fig.tight_layout()
 
@@ -295,9 +382,37 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
     else:
         out_path = Path(out_path)
 
-    fig.savefig(out_path, dpi=args.dpi)
+    # bbox_inches="tight" ensures the out-of-axes path-type legend is not
+    # clipped by the figure bounds.
+    fig.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
     plt.close(fig)
     print(f"[plot] saved {out_path}")
+
+
+def apply_window_mode(curves: Sequence[Curve], mode: str) -> None:
+    """Rewrite each curve's ``effective_end_ms`` so the AUC integration
+    window matches the requested cross-curve convention.
+
+    - ``extended``: every curve ends at ``auc_start_ms + max_own_window``.
+      Curves that terminated earlier get their final coverage held until
+      that endpoint.
+    - ``common``: every curve ends at ``auc_start_ms + min_own_window``.
+      Curves that ran longer get truncated.
+    - ``own``: no change; each curve keeps its native end time.
+    """
+    if not curves:
+        return
+    windows = [c.own_window_ms for c in curves]
+    if mode == "extended":
+        target = max(windows)
+    elif mode == "common":
+        target = min(windows)
+    elif mode == "own":
+        return
+    else:
+        raise ValueError(f"unknown window mode: {mode}")
+    for c in curves:
+        c.effective_end_ms = c.auc_start_ms + target
 
 
 def parse_labels(labels_arg: str | None, n: int) -> List[str | None]:
@@ -382,6 +497,18 @@ def main() -> None:
         "lands at x=0, putting them on a shared 'exploration time since "
         "first path' axis.",
     )
+    parser.add_argument(
+        "--window-mode",
+        choices=["extended", "common", "own"],
+        default="extended",
+        help="How the AUC integration window is chosen across multiple curves. "
+        "'extended' (default): integrate every curve over the longest "
+        "normalised window, extending curves that terminated earlier at "
+        "their final coverage — fair when runs stopped via a coverage "
+        "threshold. 'common': truncate every curve to the shortest window. "
+        "'own': each curve uses its own window (window-length biased; not "
+        "recommended for cross-strategy comparison).",
+    )
     args = parser.parse_args()
 
     if args.threshold is not None and args.threshold < 0:
@@ -394,22 +521,30 @@ def main() -> None:
             load_curve(tsv_path, label, args.end_time, args.include_startup)
         )
 
+    apply_window_mode(curves, args.window_mode)
+
     # Text summary — goes to stdout regardless of --no-plot.
-    window_note = (
-        "integrated over [0, T]"
-        if args.include_startup
-        else "integrated over [t_1, T] (startup excluded)"
+    startup_note = (
+        "from t=0" if args.include_startup else "from t_1 (startup excluded)"
     )
+    if args.window_mode == "extended":
+        window_note = f"integrated {startup_note} over the longest window (terminated curves extended at final coverage)"
+    elif args.window_mode == "common":
+        window_note = f"integrated {startup_note} over the shortest shared window"
+    else:
+        window_note = f"integrated {startup_note} over each curve's own window"
+
     header = (
-        f"{'label':<30}  {'t_1 (ms)':>8}  {'T (ms)':>8}  "
-        f"{'final %':>8}  {'AUC (%·ms)':>12}  {'AUC avg %':>10}"
+        f"{'label':<30}  {'t_1 (ms)':>8}  {'T_end (ms)':>10}  "
+        f"{'window (ms)':>11}  {'final %':>8}  {'AUC (%·ms)':>12}  {'AUC avg %':>10}"
     )
     print(header)
     print("-" * len(header))
     for c in curves:
         print(
-            f"{c.label:<30}  {c.first_path_ms:>8d}  {c.end_time_ms:>8d}  "
-            f"{c.final_coverage:>8.2f}  {c.auc_raw:>12.1f}  {c.auc_avg:>10.2f}"
+            f"{c.label:<30}  {c.first_path_ms:>8d}  {c.auc_end_ms:>10d}  "
+            f"{c.auc_window_ms:>11d}  {c.final_coverage:>8.2f}  "
+            f"{c.auc_raw:>12.1f}  {c.auc_avg:>10.2f}"
         )
     print(f"({window_note})")
 
