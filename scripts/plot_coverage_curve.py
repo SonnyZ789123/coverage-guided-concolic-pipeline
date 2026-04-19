@@ -208,7 +208,10 @@ def display_label(label: str) -> str:
 # OK (improvements) vs IGNORE (pruned, flat) vs ERROR visible on the curve.
 PATH_TYPE_MARKER = {
     "OK": ("o", "tab:blue"),
-    "IGNORE": ("x", "tab:gray"),
+    # IGNORE appears dozens of times per plateau, so keep it small — but
+    # black + higher alpha keeps individual markers readable against the
+    # coloured curves.
+    "IGNORE": ("x", "black"),
     "ERROR": ("s", "tab:red"),
     "DONT_KNOW": ("^", "tab:orange"),
 }
@@ -325,6 +328,11 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
             kwargs = dict(zorder=3, color=face)
             if ptype == "OK":
                 kwargs.update(s=26, edgecolors=plot_colour, linewidths=0.6)
+            elif ptype == "IGNORE":
+                # Smaller + thinner stroke than other markers so dense IGNORE
+                # streaks don't mask the underlying curve. Alpha tuned so
+                # individual markers still read as crisp against the fill.
+                kwargs.update(s=8, alpha=0.55, linewidths=0.6)
             else:
                 kwargs.update(s=16)
             ax.scatter((t_ms - offset) / time_div, cov, marker=marker, **kwargs)
@@ -360,7 +368,7 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
     pt_handles = [
         Line2D([0], [0], marker="o", linestyle="", color="black",
                markersize=6, label="OK (new coverage, curve colour)"),
-        Line2D([0], [0], marker="x", linestyle="", color="tab:gray",
+        Line2D([0], [0], marker="x", linestyle="", color="black",
                markersize=6, label="IGNORE (pruned)"),
         Line2D([0], [0], marker="s", linestyle="", color="tab:red",
                markersize=6, label="ERROR"),
