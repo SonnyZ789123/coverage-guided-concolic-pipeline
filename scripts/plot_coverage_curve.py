@@ -19,9 +19,13 @@ By default the integration window is ``[t_1, T]`` — from the first path's
 completion time to ``T = --end-time`` (defaults to the last ``elapsed_ms``
 in the file). This excludes JPF / class-loading startup time, which is a
 fixed overhead unrelated to the exploration strategy, so different
-strategies can be compared on pure exploration efficiency. Pass
-``--include-startup`` to integrate from ``t=0`` instead (the old behaviour
-used in the first batch of evaluation notes).
+strategies can be compared on pure exploration efficiency. The plotted
+x-axis is likewise **normalised** per curve: each curve is shifted so its
+own ``t_1`` lands at ``x = 0``, which puts all strategies on a shared
+"exploration time since first path" axis and removes the horizontal
+offset caused by varying boot times. Pass ``--include-startup`` to
+integrate from ``t=0`` and plot with an absolute elapsed-time axis
+(the old behaviour used in the first batch of evaluation notes).
 
 Usage::
 
@@ -177,9 +181,20 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         )
         sys.exit(2)
 
-    # Convert to seconds for readability on anything longer than a couple of seconds.
-    t_max_ms = max(c.end_time_ms for c in curves)
-    use_seconds = t_max_ms >= 2000
+    # When startup is excluded (the default), shift each curve's time axis so
+    # every strategy's first path lands at x = 0. This puts the three curves
+    # on a common "exploration time" axis — boot / class-loading overhead
+    # (which differs slightly per run but isn't strategy-specific) no longer
+    # shifts the curves horizontally.
+    normalize = not args.include_startup
+    offsets_ms = {
+        id(c): (c.first_path_ms if normalize else 0) for c in curves
+    }
+    # Use the longest post-normalisation run to size the x-axis.
+    x_max_ms = max(
+        c.end_time_ms - offsets_ms[id(c)] for c in curves
+    )
+    use_seconds = x_max_ms >= 2000
     time_div = 1000.0 if use_seconds else 1.0
     time_unit = "s" if use_seconds else "ms"
 
@@ -187,8 +202,14 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
 
     for curve in curves:
         colour = DEFAULT_COLOURS.get(curve.label, None)
-        xs = [t / time_div for t in curve.times_ms] + [curve.end_time_ms / time_div]
-        ys = list(curve.coverage) + [curve.coverage[-1]]
+        offset = offsets_ms[id(curve)]
+        # Skip the synthetic (0, 0) leading point when normalising — the
+        # real first sample already sits at x = 0 after shifting.
+        start_idx = 1 if normalize else 0
+        xs = [
+            (t - offset) / time_div for t in curve.times_ms[start_idx:]
+        ] + [(curve.end_time_ms - offset) / time_div]
+        ys = list(curve.coverage[start_idx:]) + [curve.coverage[-1]]
         # Right-continuous step: value in [t_{i-1}, t_i) is coverage[i-1], so
         # drawstyle="steps-post" (hold value until next x) matches exactly.
         line, = ax.step(
@@ -202,22 +223,8 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
         plot_colour = line.get_color()
 
         if not args.no_shade:
-            # Only shade the active-exploration window — the [0, t_1) segment
-            # where coverage is 0 has no area anyway, but when startup is
-            # excluded we also want the visual to reinforce that the AUC is
-            # measured from t_1 onwards.
-            shade_start = curve.auc_start_ms / time_div
-            shade_xs = [x for x in xs if x >= shade_start]
-            shade_ys = [y for x, y in zip(xs, ys) if x >= shade_start]
-            if shade_xs and shade_xs[0] > shade_start:
-                # Make sure the shaded region starts exactly at the window edge
-                # so the fill lines up with the vertical marker below.
-                idx = next(i for i, x in enumerate(xs) if x >= shade_start)
-                prev_y = ys[max(idx - 1, 0)]
-                shade_xs.insert(0, shade_start)
-                shade_ys.insert(0, prev_y)
             ax.fill_between(
-                shade_xs, 0, shade_ys, step="post", alpha=0.08, color=plot_colour
+                xs, 0, ys, step="post", alpha=0.08, color=plot_colour
             )
 
         # Scatter per-path samples, coloured by path type. OK markers use the
@@ -235,34 +242,7 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
                 kwargs.update(s=26, edgecolors=plot_colour, linewidths=0.6)
             else:
                 kwargs.update(s=16)
-            ax.scatter(t_ms / time_div, cov, marker=marker, **kwargs)
-
-    # Visual cue for the AUC integration window. When startup is excluded,
-    # shade the [0, min(t_1)] region — the common pre-exploration dead time
-    # that's excluded for every curve — and drop per-curve vertical ticks at
-    # each t_1 so the honest integration start for each strategy is visible.
-    if not args.include_startup:
-        t1s = [c.first_path_ms for c in curves if c.first_path_ms > 0]
-        if t1s:
-            shared_startup_ms = min(t1s)
-            ax.axvspan(
-                0,
-                shared_startup_ms / time_div,
-                color="#cccccc",
-                alpha=0.25,
-                zorder=0,
-                label="Startup (excluded from AUC)",
-            )
-            for curve in curves:
-                colour = DEFAULT_COLOURS.get(curve.label, None)
-                ax.axvline(
-                    curve.first_path_ms / time_div,
-                    color=colour or "#555555",
-                    linestyle=":",
-                    linewidth=1.0,
-                    alpha=0.7,
-                    zorder=1,
-                )
+            ax.scatter((t_ms - offset) / time_div, cov, marker=marker, **kwargs)
 
     # Threshold guide if everything looks like a TimedOrBranchCoverageTermination run.
     if args.threshold is not None:
@@ -274,9 +254,12 @@ def plot_curves(curves: Sequence[Curve], args: argparse.Namespace) -> None:
             label=f"JDart branch-coverage threshold ({args.threshold:.0f}%)",
         )
 
-    ax.set_xlim(left=0, right=t_max_ms / time_div)
+    ax.set_xlim(left=0, right=x_max_ms / time_div)
     ax.set_ylim(0, 100)
-    ax.set_xlabel(f"Elapsed JDart time ({time_unit})")
+    if normalize:
+        ax.set_xlabel(f"Exploration time since first path ({time_unit})")
+    else:
+        ax.set_xlabel(f"Elapsed JDart time ({time_unit})")
     ax.set_ylabel("Branch coverage (%, JDart-reported)")
     if args.title:
         ax.set_title(args.title)
@@ -393,9 +376,11 @@ def main() -> None:
     parser.add_argument(
         "--include-startup",
         action="store_true",
-        help="Integrate AUC from t=0 instead of from the first path's "
-        "completion time (t_1). Default excludes JPF / class-loading startup "
-        "so strategies are compared on pure exploration efficiency.",
+        help="Integrate AUC from t=0 and plot with an absolute elapsed-time "
+        "x-axis. Default excludes JPF / class-loading startup (AUC from t_1) "
+        "and normalises each curve's x-axis so every strategy's first path "
+        "lands at x=0, putting them on a shared 'exploration time since "
+        "first path' axis.",
     )
     args = parser.parse_args()
 
