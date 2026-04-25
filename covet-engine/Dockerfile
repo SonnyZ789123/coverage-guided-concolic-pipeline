@@ -117,7 +117,7 @@ RUN mkdir -p /root/.jconstraints/extensions && \
 # Install covet-engine (forked JDart)
 ###############################################################################
 WORKDIR ${COVET_DIR}
-ENV COVET_VERSION=4.4.0
+ENV COVET_VERSION=5.0.0
 RUN git clone --branch v${COVET_VERSION} https://github.com/SonnyZ789123/covet-engine.git
 WORKDIR ${COVET_DIR}/covet-engine
 RUN git checkout v${COVET_VERSION}

@@ -31,8 +31,7 @@ services:
       - OUTPUT_DIR=${CONTAINER_OUTPUT_DIR}
     container_name: pathcov
     volumes:
-      # - pipeline-data:${CONTAINER_DATA_DIR}
-      - ./development/data:${CONTAINER_DATA_DIR}
+      - pipeline-data:${CONTAINER_DATA_DIR}
       - ./pathcov/configs:${CONTAINER_CONFIGS_DIR}:ro
       - ./pathcov/scripts:${CONTAINER_SCRIPTS_DIR}:ro
       - ./output:${CONTAINER_OUTPUT_DIR}
@@ -41,7 +40,7 @@ services:
     tty: true
 
   covet-engine:
-    image: sonnyz789123/covet-engine-image:4.4.0
+    image: sonnyz789123/covet-engine-image:5.0.0
     platform: linux/amd64
     environment:
       - ENV=prod
@@ -53,8 +52,7 @@ services:
       - OUTPUT_DIR=${CONTAINER_OUTPUT_DIR}
     container_name: covet-engine
     volumes:
-      # - pipeline-data:${CONTAINER_DATA_DIR}
-      - ./development/data:${CONTAINER_DATA_DIR}
+      - pipeline-data:${CONTAINER_DATA_DIR}
       - ./covet-engine/configs:${CONTAINER_CONFIGS_DIR}:ro
       - ./output:${CONTAINER_OUTPUT_DIR}
     working_dir: /covet-engine-project
