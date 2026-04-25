@@ -44,7 +44,7 @@ All stages are fully containerized and orchestrated via Docker Compose.
 │   ├── configs
 │   │   └── sut.config            # AUTO-GENERATED from sut.yml
 │   └── scripts
-│       └── run_pathcov_pipeline.sh
+│       └── run_pipeline.sh
 ├── scripts
 │   └── generate_sut_configs.py   # Generates tool-specific configs from sut.yml
 ├── run_pipeline.sh               # Main script for running the pipeline
@@ -168,7 +168,7 @@ jdart.exploration=gov.nasa.jpf.jdart.exploration.BFSStrategy
 Stop exploration once a target branch coverage is reached:
 
 ```properties
-# Stop when runtime branch coverage (initial test suite + JDart discoveries)
+# Stop when runtime branch coverage (initial test suite + covet-engine discoveries)
 # reaches 80%. Requires a coverage tracker -- automatic with the coverage
 # heuristic, or via jdart.coverage.block_map_path for DFS/BFS (see below).
 jdart.termination=gov.nasa.jpf.jdart.termination.BranchCoverageTermination,80
@@ -392,7 +392,7 @@ services:
       - ./development/data:/data
 ```
 
-After running the pipeline, which runs `scripts/run_pathcov_pipeline.sh` in the pathcov-container, a `coverage_graph.svg` file is created in the specified /data folder with path `/data/visualization/icfg/coverage/coverage_graph.svg`.
+After running the pipeline, which runs `scripts/run_pipeline.sh` in the pathcov-container, a `coverage_graph.svg` file is created in the specified /data folder with path `/data/visualization/icfg/coverage/coverage_graph.svg`.
 
 Then just execute `open data/visualization/icfg/coverage/coverage_graph.svg`. 
 
@@ -404,19 +404,19 @@ After running the pipeline with `jdart.tests.gen=true`, copy-paste the test file
 docker exec -it pathcov bash
 ```
 
-And execute the `run_pathcov_pipeline.sh` script again by executing: 
+And execute the `run_pipeline.sh` script again by executing: 
 
 ```bash
-/scripts/run_pathcov_pipeline.sh
+/scripts/run_pipeline.sh
 ```
 
 Then open the `coverage_graph.svg` again as explained above. 
 
-## About JDart execution 
+## About covet-engine execution 
 
-### What JDart Is For
+### What covet-engine Is For
 
-JDart performs **concolic execution** of Java methods to explore **full execution paths** and generate JUnit tests. It is intended for **small, bounded, single-threaded methods** driven by **primitive inputs**.
+covet-engine (forked JDart) performs **concolic execution** of Java methods to explore **full execution paths** and generate JUnit tests. It is intended for **small, bounded, single-threaded methods** driven by **primitive inputs**.
 
 ### Symbolic vs Concrete
 
@@ -440,7 +440,7 @@ Only symbolic parameters can induce to-be-explored branches.
 - Interprocedural calls with symbolic propagation
 - `throw`, runtime exceptions, `try–catch`
 - Division by zero is explicitly branched
-- JDart supports multiple exploration strategies, and constraint solver is interchangeable (default is z3)
+- covet-engine supports multiple exploration strategies, and constraint solver is interchangeable (default is z3)
 
 ### Unsupported (yet) / Limited Features
 
@@ -474,13 +474,13 @@ Generated tests:
 
 ### Summary
 
-**JDart works best for**
+**covet-engine works best for**
 
 - Small, primitive-centric methods
 - Bounded exploration
 - Academic and controlled benchmarks
 
-**JDart is not suited for**
+**covet-engine is not suited for**
 
 - Recursive or concurrent code
 - Heap-heavy or library-intensive applications
